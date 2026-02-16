@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "docepo-front": {
+    "docepo": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -56,10 +56,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "docepo-front:build:production"
+              "buildTarget": "docepo:build:production"
             },
             "development": {
-              "buildTarget": "docepo-front:build:development"
+              "buildTarget": "docepo:build:development"
             }
           },
           "defaultConfiguration": "development"
