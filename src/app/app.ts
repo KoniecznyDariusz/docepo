@@ -6,7 +6,13 @@ import { RouterOutlet } from '@angular/router';
   imports: [RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.css'
+  ,styles: [`
+    :host {
+      display: block;
+      height: 100vh;
+    }
+  `]
 })
 export class App {
-  protected readonly title = signal('docepo-front');
+  protected readonly title = signal('DocEpo');
 }
