@@ -1,0 +1,29 @@
+<div class="main-panel-container">
+  <!-- Górny panel z danymi prowadzącego i akcjami -->
+  <header class="header-section">
+    <div class="instructor-info">
+      <h3>Dane Prowadzącego</h3>
+      <!-- W przyszłości te dane będą wczytywane dynamicznie -->
+      <p>dr inż. Jan Niezbędny</p>
+    </div>
+    <div class="header-actions">
+      <button class="settings-button" title="Ustawienia">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Lista kursów -->
+  <main class="courses-list">
+    @for (course of courses; track course.id) {
+    <a [routerLink]="['/groups']"
+       [queryParams]="{ courseId: course.id }"
+       class="course-item">
+
+      <div class="course-details">
+        <h2>{{ course.name }}</h2>
+      </div>
+    </a>
+    }
+  </main>
+</div>

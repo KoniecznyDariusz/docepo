@@ -1,6 +1,8 @@
 import { Component, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { StudentRowComponent } from './student-row.component';
 import { EportalService } from 'app/service/eportal.service';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
@@ -36,8 +38,14 @@ export class StudentListComponent {
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
   private eportalService = inject(EportalService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
-  students$ = this.eportalService.getStudents();
+  students$ = this.route.queryParams.pipe(
+    switchMap(params => {
+      const groupId = params['groupId'];
+      return groupId ? this.eportalService.getStudents(groupId) : of([]);
+    })
+  );
 
   updateStatus(event: {studentId: string, status: AttendanceStatus | null}) {
     this.eportalService.updateAttendance(event.studentId, event.status).subscribe(() => {
