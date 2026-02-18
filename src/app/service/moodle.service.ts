@@ -9,7 +9,7 @@ import { ClassDate } from 'app/model/classDate.model';
 @Injectable({
   providedIn: 'root'
 })
-export class EportalService {
+export class MoodleService {
 
   // Przykładowe dane - w przyszłości zastąpione pobieraniem z API
   private students: Student[] = [

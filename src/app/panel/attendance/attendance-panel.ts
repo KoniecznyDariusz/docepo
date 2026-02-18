@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EportalService } from 'app/service/eportal.service';
+import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
 import { ClassDate } from 'app/model/classDate.model';
@@ -21,7 +21,7 @@ export class AttendancePanel implements OnInit {
   instructor = 'dr inż. Jan Niezbędny'; // Dane prowadzącego (na razie statyczne)
 
   private route = inject(ActivatedRoute);
-  private eportalService = inject(EportalService);
+  private eportalService = inject(MoodleService);
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {

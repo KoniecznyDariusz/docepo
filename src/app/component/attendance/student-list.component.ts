@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { StudentRowComponent } from './student-row.component';
-import { EportalService } from 'app/service/eportal.service';
+import { MoodleService } from 'app/service/moodle.service';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 
 @Component({
@@ -36,7 +36,7 @@ import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 })
 export class StudentListComponent {
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
-  private eportalService = inject(EportalService);
+  private eportalService = inject(MoodleService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 

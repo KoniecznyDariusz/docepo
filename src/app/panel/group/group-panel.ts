@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EportalService } from 'app/service/eportal.service';
+import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { GroupListComponent } from 'app/component/group-list/group-list.component';
@@ -20,7 +20,7 @@ export class GroupPanel implements OnInit {
   courseName: string | undefined;
 
   private route = inject(ActivatedRoute);
-  private eportalService = inject(EportalService);
+  private eportalService = inject(MoodleService);
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {

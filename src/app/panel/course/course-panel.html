@@ -18,7 +18,7 @@
     @for (course of courses; track course.id) {
     <a [routerLink]="['/groups']"
        [queryParams]="{ courseId: course.id }"
-       class="course-item">
+       [ngClass]="{ 'course-item': true, 'highlighted': courseHighlighted[course.id] }">
 
       <div class="course-details">
         <h2>{{ course.name }}</h2>

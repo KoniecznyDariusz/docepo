@@ -3,7 +3,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { DatePipe } from '@angular/common';
 
 import { EportalService } from 'app/service/eportal.service';
-import { MainPanel } from './main-panel';
+import { MainPanel } from './course-panel';
 
 describe('MainPanel', () => {
   let component: MainPanel;
