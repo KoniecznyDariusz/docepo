@@ -16,8 +16,7 @@
   <!-- Lista kursów -->
   <main class="courses-list">
     @for (course of courses; track course.id) {
-    <a [routerLink]="['/groups']"
-       [queryParams]="{ courseId: course.id }"
+     <a [routerLink]="['/groups', course.id]"
        [ngClass]="{ 'course-item': true, 'highlighted': courseHighlighted[course.id] }">
 
       <div class="course-details">

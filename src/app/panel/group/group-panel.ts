@@ -11,23 +11,21 @@ import { GroupListComponent } from 'app/component/group-list/group-list.componen
   standalone: true,
   imports: [CommonModule, RouterLink, GroupListComponent],
   templateUrl: './group-panel.html',
-  styleUrl: './group-panel.css'
+  styleUrls: ['./group-panel.css']
 })
 export class GroupPanel implements OnInit {
   groups: Group[] = [];
   groupClassDates: { [id: string]: ClassDate | null } = {};
-  courseId: string | null = null;
+  courseId!: string;
   courseName: string | undefined;
 
   private route = inject(ActivatedRoute);
   private eportalService = inject(MoodleService);
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
-      this.courseId = params['courseId'] || null;
-      if (this.courseId) {
-        this.loadCourseAndGroups(this.courseId);
-      }
+    this.route.params.subscribe(params => {
+      this.courseId = params['courseId'];
+      this.loadCourseAndGroups(this.courseId);
     });
   }
 

@@ -11,7 +11,7 @@ export const routes: Routes = [
     { path: '', redirectTo: 'main', pathMatch: 'full' },
     { path: 'moodle-selection', component: MoodleSelectionPanel },
     { path: 'main', component: CoursePanel, canActivate: [moodleSelectionGuard] },
-    { path: 'groups', component: GroupPanel, canActivate: [moodleSelectionGuard] },
-    { path: 'attendance', component: AttendancePanel, canActivate: [moodleSelectionGuard] },
-    { path: 'student', component: StudentPanel, canActivate: [moodleSelectionGuard] },
+    { path: 'groups/:courseId', component: GroupPanel, canActivate: [moodleSelectionGuard] },
+    { path: 'attendance/:classDateId', component: AttendancePanel, canActivate: [moodleSelectionGuard] },
+    { path: 'student/:studentId/:groupId', component: StudentPanel, canActivate: [moodleSelectionGuard] },
 ];

@@ -5,8 +5,8 @@ import { MoodleService } from 'app/service/moodle.service';
 import { Student } from 'app/model/student.model';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
-import { StudentAttendancesComponent } from 'app/component/student/student-attendances.component';
-import { StudentTasklistsComponent } from 'app/component/student/student-tasklists.component';
+import { StudentAttendancesComponent } from 'app/component/student/student-attendances/student-attendances.component';
+import { StudentTasklistsComponent } from 'app/component/student/student-tasklists/student-tasklists.component';
 
 @Component({
   selector: 'app-student-panel',
@@ -25,11 +25,11 @@ export class StudentPanel implements OnInit {
   private eportalService = inject(MoodleService);
 
   ngOnInit() {
-    this.route.queryParams.subscribe(params => {
+    this.route.params.subscribe(params => {
       const studentId = params['studentId'];
       const groupId = params['groupId'];
 
-      if (groupId) {
+      if (studentId && groupId) {
         this.eportalService.getGroup(groupId).subscribe(g => {
           this.group = g;
           if (g) {
@@ -45,6 +45,18 @@ export class StudentPanel implements OnInit {
   }
 
   back() {
-    this.router.navigate(['/attendance'], { queryParams: { groupId: this.group?.id, studentId: this.student?.id } });
+    const groupId = this.group?.id;
+    if (!groupId) {
+      return;
+    }
+
+    // Navigate back to attendance for first classDate of the group
+    this.eportalService.getGroup(groupId).subscribe(g => {
+      if (g && g.classDates && g.classDates.length > 0) {
+        this.router.navigate(['/attendance', g.classDates[0].id]);
+      } else {
+        this.router.navigate(['/groups', this.group?.courseId]);
+      }
+    });
   }
 }

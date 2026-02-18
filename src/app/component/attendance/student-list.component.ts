@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, signal, OnInit } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, signal, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { StudentRowComponent } from './student-row.component';
@@ -38,23 +38,17 @@ export class StudentListComponent {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
+  groupId = input<string | undefined>();
   // Signals (Angular 21)
-  private queryParams = signal<any>({} as any);
   students = signal<any[]>([]);
 
-  ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
-      this.queryParams.set(params);
-      const groupId = params['groupId'];
-      const studentId = params['studentId'];
-
-      if (groupId) {
-        this.eportalService.getStudents(groupId).subscribe(list => {
+  constructor() {
+    // Watch groupId input changes
+    effect(() => {
+      const gid = this.groupId();
+      if (gid) {
+        this.eportalService.getStudents(gid).subscribe(list => {
           this.students.set(list || []);
-          if (studentId) {
-            const index = list.findIndex((s: any) => s.id === studentId);
-            if (index >= 0) setTimeout(() => this.scrollToStudent(index), 0);
-          }
         });
       } else {
         this.students.set([]);
@@ -79,7 +73,10 @@ export class StudentListComponent {
 
   navigateToDetails(studentId: string) {
     console.log('Nawigacja do studenta:', studentId);
-    const groupId = this.route.snapshot.queryParams['groupId'];
-    this.router.navigate(['/student'], { queryParams: { studentId, groupId } });
+    const groupId = this.groupId();
+    if (!groupId) {
+      return;
+    }
+    this.router.navigate(['/student', studentId, groupId]);
   }
 }

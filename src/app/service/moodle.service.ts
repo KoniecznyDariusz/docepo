@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { Student } from 'app/model/student.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
+import { Attendance } from 'app/model/attendance.model';
 import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
@@ -43,19 +44,72 @@ export class MoodleService {
     { id: 'g4', courseId: 'c3', name: 'Grupa B', classDates: [this.classDates[3]] },
   ];
 
+  // Przykładowe dane obecności (attendance) dla wszystkich kombinacji studentów × terminów
+  private attendances: Attendance[] = this.generateAttendances();
+
   getStudents(groupId: string): Observable<Student[]> {
     // Tutaj w przyszłości będzie wywołanie np. this.http.get<Student[]>(`api/groups/${groupId}/students`)
     console.log(`Pobieranie studentów dla grupy: ${groupId}`);
     return of(this.students);
   }
 
-  updateAttendance(studentId: string, status: AttendanceStatus | null): Observable<void> {
-    // Tutaj w przyszłości będzie wywołanie np. this.http.put('api/attendance', { studentId, status })
+  updateAttendance(studentId: string, status: AttendanceStatus | null, classDateId?: string): Observable<void> {
+    // Zaktualizuj wpis obecności dla danego studenta i terminu zajęć.
+    // Jeśli classDateId nie podano, używamy pierwszego znanego terminu (dla prostoty przykładu).
+    const targetClassDateId = classDateId || (this.classDates[0] && this.classDates[0].id) || 'cd1';
+
+    let entry = this.attendances.find(a => a.studentId === studentId && a.classDateId === targetClassDateId);
+    if (entry) {
+      entry.status = status;
+    } else {
+      const newEntry: Attendance = {
+        id: `a${this.attendances.length + 1}`,
+        studentId,
+        classDateId: targetClassDateId,
+        status
+      };
+      this.attendances.push(newEntry);
+    }
+
+    // Dla kompatybilności z UI, także aktualizujemy pole status w obiekcie studenta (widoczne na liście)
     const student = this.students.find(s => s.id === studentId);
     if (student) {
       student.status = status;
     }
+
     return of(void 0);
+  }
+
+  // Pobiera wpisy obecności dla konkretnego studenta w kontekście danej grupy.
+  // Zwraca wszystkie attendance dla studentId, których classDateId należy do terminów tej grupy.
+  getAttendancesForStudent(studentId: string, groupId: string): Observable<Attendance[]> {
+    const group = this.groups.find(g => g.id === groupId);
+    if (!group) {
+      return of([]);
+    }
+
+    const classDateIds = (group.classDates || []).map(cd => cd.id);
+    const list = this.attendances.filter(a => a.studentId === studentId && classDateIds.includes(a.classDateId));
+    console.log('getAttendancesForStudent',list);
+    return of(list);
+  }
+
+  // Pobiera wpisy obecności dla konkretnego terminu zajęć
+  getAttendancesForClassDate(classDateId: string): Observable<Attendance[]> {
+    const list = this.attendances.filter(a => a.classDateId === classDateId);
+    return of(list);
+  }
+
+  // Pobierz attendance po jego id
+  getAttendanceById(attendanceId: string): Observable<Attendance | undefined> {
+    const entry = this.attendances.find(a => a.id === attendanceId);
+    return of(entry);
+  }
+
+  // Znajdź grupę zawierającą dany classDateId
+  getGroupByClassDateId(classDateId: string): Observable<Group | undefined> {
+    const group = this.groups.find(g => (g.classDates || []).some(cd => cd.id === classDateId));
+    return of(group);
   }
 
   getCourses(lecturerId: string): Observable<Course[]> {
@@ -116,5 +170,28 @@ export class MoodleService {
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     return of(futureClassDates.length > 0 ? futureClassDates[0] : null);
+  }
+
+  // Wygeneruj wszystkie wpisy attendance dla każdej kombinacji studenta × classDate
+  private generateAttendances(): Attendance[] {
+    const attendances: Attendance[] = [];
+    const statuses: AttendanceStatus[] = ['P', 'A', 'L', null];
+    let id = 1;
+
+    this.classDates.forEach(classDate => {
+      this.students.forEach((student, idx) => {
+        // każdy student ma status zmieniający się dla różnych terminów
+        const status = statuses[idx % statuses.length];
+        attendances.push({
+          id: `a${id}`,
+          studentId: student.id,
+          classDateId: classDate.id,
+          status: status === null ? null : status
+        });
+        id++;
+      });
+    });
+
+    return attendances;
   }
 }

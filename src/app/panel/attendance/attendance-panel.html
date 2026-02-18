@@ -25,10 +25,10 @@
 
   <!-- Lista studentów (zajmuje pozostałą przestrzeń) -->
   <main class="flex-1 overflow-hidden relative main-content">
-    <app-student-list></app-student-list>
+    <app-student-list [groupId]="group?.id"></app-student-list>
   </main>
 
   <div class="footer-actions">
-    <a [routerLink]="['/groups']" [queryParams]="{ courseId: course?.id }" class="back-button">↩ <span class="btn-label">grupy</span></a>
+    <a [routerLink]="['/groups', course?.id]" class="back-button">↩ <span class="btn-label">grupy</span></a>
   </div>
 </div>

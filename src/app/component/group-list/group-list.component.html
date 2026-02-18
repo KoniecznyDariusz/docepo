@@ -1,11 +1,10 @@
 <main class="groups-list">
-  @if (groups.length === 0) {
+  @if (groups().length === 0) {
     <p class="no-groups">Brak grup dla tego kursu.</p>
   }
 
-  @for (group of groups; track group.id) {
-    <a [routerLink]="['/attendance']"
-       [queryParams]="{ groupId: group.id }"
+  @for (group of groups(); track group.id) {
+    <a [routerLink]="['/attendance', group.classDates?.[0]?.id]"
        class="group-item"
        [ngClass]="{ 'highlighted': isGroupActive(group) }">
 

@@ -24,19 +24,21 @@ export class AttendancePanel implements OnInit {
   private eportalService = inject(MoodleService);
 
   ngOnInit() {
-    this.route.queryParams.subscribe(params => {
-      const groupId = params['groupId'];
-      if (groupId) {
-        this.eportalService.getGroup(groupId).subscribe(group => {
-          this.group = group;
-          if (group) {
-            this.eportalService.getCourse(group.courseId).subscribe(course => {
+    // Observe route params: classDateId (uniquely identifies a specific session with all students)
+    this.route.params.subscribe(p => {
+      const classDateId = p['classDateId'];
+
+      if (classDateId) {
+        // Find group containing this classDateId
+        this.eportalService.getGroupByClassDateId(classDateId).subscribe(g => {
+          this.group = g;
+          if (g) {
+            this.eportalService.getCourse(g.courseId).subscribe(course => {
               this.course = course;
             });
-            // Pobranie aktualnego lub następnego terminu zajęć
-            this.eportalService.getCurrentOrNextClassDate(groupId).subscribe(classDate => {
-              this.currentClassDate = classDate;
-            });
+            // Find the exact classDate
+            const cd = (g.classDates || []).find(x => x.id === classDateId) || null;
+            this.currentClassDate = cd;
           }
         });
       }
