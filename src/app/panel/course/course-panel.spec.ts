@@ -2,21 +2,21 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { DatePipe } from '@angular/common';
 
-import { EportalService } from 'app/service/eportal.service';
-import { MainPanel } from './course-panel';
+import { MoodleService } from 'app/service/moodle.service';
+import { CoursePanel } from './course-panel';
 
-describe('MainPanel', () => {
-  let component: MainPanel;
-  let fixture: ComponentFixture<MainPanel>;
+describe('CoursePanel', () => {
+  let component: CoursePanel;
+  let fixture: ComponentFixture<CoursePanel>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MainPanel, RouterTestingModule],
-      providers: [DatePipe, EportalService]
+      imports: [CoursePanel, RouterTestingModule],
+      providers: [DatePipe, MoodleService]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(MainPanel);
+    fixture = TestBed.createComponent(CoursePanel);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

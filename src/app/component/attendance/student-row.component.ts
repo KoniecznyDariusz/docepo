@@ -9,9 +9,8 @@ import { AttendanceStatus } from "app/model/AttendanceStatus.model";
   standalone: true,
   imports: [CommonModule, AttendanceButtonComponent],
   template: `
-    <div (click)="onProfileClick.emit(student().id)"
-      class="flex items-center justify-between px-6 h-20 snap-center shrink-0 border-b border-gray-800">
-      <div class="text-left">
+    <div class="flex items-center justify-between px-6 h-20 snap-center shrink-0 border-b border-gray-800">
+      <div class="text-left" (click)="onProfileClick.emit(student().id)">
         <p class="text-white font-bold leading-tight">{{ student().lastName }}</p>
         <p class="text-gray-400 text-sm">{{ student().firstName }}</p>
       </div>

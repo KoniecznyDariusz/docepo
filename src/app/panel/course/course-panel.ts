@@ -12,7 +12,7 @@ import { ClassDate } from 'app/model/classDate.model';
   templateUrl: './course-panel.html',
   styleUrl: './course-panel.css',
 })
-export class MainPanel implements OnInit {
+export class CoursePanel implements OnInit {
   courses: Course[] = [];
   courseHighlighted: { [id: string]: boolean } = {};
   // Przykładowe ID prowadzącego - w przyszłości pobrane np. po zalogowaniu
