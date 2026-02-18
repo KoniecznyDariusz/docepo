@@ -6,12 +6,7 @@
         <h3 class="text-sm text-gray-400 font-medium">{{ instructor }}</h3>
         <h1 class="text-xl font-bold text-blue-400 leading-tight">{{ course?.name }}</h1>
       </div>
-      <!-- Przycisk powrotu -->
-      <a [routerLink]="['/groups']" 
-         [queryParams]="{ courseId: course?.id }" 
-         class="px-3 py-1 rounded border border-gray-600 hover:bg-gray-700 text-sm transition-colors no-underline text-white flex items-center gap-1">
-        <span>↩</span> Grupy
-      </a>
+      <!-- Przycisk powrotu (przeniesiony na stałe w prawym dolnym rogu) -->
     </div>
     
     <div class="flex justify-between items-end mt-2">
@@ -29,7 +24,11 @@
   </header>
 
   <!-- Lista studentów (zajmuje pozostałą przestrzeń) -->
-  <main class="flex-1 overflow-hidden relative">
+  <main class="flex-1 overflow-hidden relative main-content">
     <app-student-list></app-student-list>
   </main>
+
+  <div class="footer-actions">
+    <a [routerLink]="['/groups']" [queryParams]="{ courseId: course?.id }" class="back-button">↩ <span class="btn-label">grupy</span></a>
+  </div>
 </div>

@@ -22,15 +22,18 @@ export class App implements OnInit {
   }
 
   private setupBackButton() {
-    CapacitorApp.addListener('backButton', async () => {
-      // Jeżeli jest historia w przeglądarce, cofamy
-      if (window.history.length > 1) {
+    CapacitorApp.addListener('backButton', async (event?: { canGoBack?: boolean }) => {
+      // Jeśli natywny WebView może cofnąć (Android) lub historia przeglądarki ma wpisy
+      const nativeCanGoBack = !!event?.canGoBack;
+      const webHistoryCanGoBack = window.history.length > 1;
+
+      if (nativeCanGoBack || webHistoryCanGoBack) {
         window.history.back();
         return;
       }
 
       // Brak historii — pytamy użytkownika czy chce wyjść
-      const shouldExit = confirm('Czy napewno chcesz wyjść z aplikacji?');
+      const shouldExit = confirm('Czy na pewno chcesz wyjść z aplikacji?');
       if (shouldExit) {
         CapacitorApp.exitApp();
       }

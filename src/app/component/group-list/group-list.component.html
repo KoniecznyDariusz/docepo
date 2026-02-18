@@ -1,32 +1,25 @@
-<div class="group-list-container">
-  <header class="header-section">
-    <h3>Wybierz grupę zajęciową</h3>
-    <a routerLink="/main" class="back-button">← Wróć</a>
-  </header>
+<main class="groups-list">
+  @if (groups.length === 0) {
+    <p class="no-groups">Brak grup dla tego kursu.</p>
+  }
 
-  <main class="groups-list">
-    @if (groups.length === 0) {
-      <p class="no-groups">Brak grup dla tego kursu.</p>
-    }
+  @for (group of groups; track group.id) {
+    <a [routerLink]="['/attendance']"
+       [queryParams]="{ groupId: group.id }"
+       class="group-item"
+       [ngClass]="{ 'highlighted': isGroupActive(group) }">
 
-    @for (group of groups; track group.id) {
-      <a [routerLink]="['/attendance']"
-         [queryParams]="{ groupId: group.id }"
-         class="group-item"
-         [ngClass]="{ 'highlighted': isGroupActive(group) }">
-
-        <div class="group-details">
-          <h2>{{ group.name }}</h2>
-        </div>
-        <div class="group-time">
-          @if (getGroupClassDate(group.id); as classDate) {
-            <span>Termin: {{ classDate.startTime | date:'yyyy-MM-dd HH:mm' }} - {{ classDate.endTime | date:'HH:mm' }}</span>
-            <p class="text-sm text-gray-400">{{ classDate.description }}</p>
-          } @else {
-            <span class="text-gray-500">Brak przyszłych zajęć</span>
-          }
-        </div>
-      </a>
-    }
-  </main>
-</div>
+      <div class="group-details">
+        <h2 class="group-name">{{ group.name }}</h2>
+      </div>
+      <div class="group-time">
+        @if (getGroupClassDate(group.id); as classDate) {
+          <span>Termin: {{ classDate.startTime | date:'yyyy-MM-dd HH:mm' }} - {{ classDate.endTime | date:'HH:mm' }}</span>
+          <p class="text-sm text-gray-400">{{ classDate.description }}</p>
+        } @else {
+          <span class="text-gray-500">Brak przyszłych zajęć</span>
+        }
+      </div>
+    </a>
+  }
+</main>
