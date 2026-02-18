@@ -1,6 +1,8 @@
+import { ClassDate } from './classDate.model';
+
 export interface Group {
   id: string;
   courseId: string;
   name: string;
-  dateTime: Date;
+  classDates?: ClassDate[];
 }

@@ -19,7 +19,12 @@
           <h2>{{ group.name }}</h2>
         </div>
         <div class="group-time">
-          <span>Termin: {{ group.dateTime | date:'yyyy-MM-dd HH:mm' }}</span>
+          @if (getGroupClassDate(group.id); as classDate) {
+            <span>Termin: {{ classDate.startTime | date:'yyyy-MM-dd HH:mm' }} - {{ classDate.endTime | date:'HH:mm' }}</span>
+            <p class="text-sm text-gray-400">{{ classDate.description }}</p>
+          } @else {
+            <span class="text-gray-500">Brak przyszłych zajęć</span>
+          }
         </div>
       </a>
     }

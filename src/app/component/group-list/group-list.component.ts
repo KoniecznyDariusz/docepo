@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Group } from 'app/model/group.model';
+import { ClassDate } from 'app/model/classDate.model';
 import { EportalService } from 'app/service/eportal.service';
 
 @Component({
@@ -13,6 +14,7 @@ import { EportalService } from 'app/service/eportal.service';
 })
 export class GroupListComponent implements OnInit, OnDestroy {
   groups: Group[] = [];
+  groupClassDates: Map<string, ClassDate | null> = new Map();
   courseId: string | null = null;
   private timer: any;
 
@@ -29,8 +31,10 @@ export class GroupListComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Odświeżanie widoku co minutę dla aktualizacji podświetlenia
-    this.timer = setInterval(() => { /* Wymuszenie detekcji zmian */ }, 60000);
+    // Odświeżanie widoku co minutę
+    this.timer = setInterval(() => {
+      this.refreshGroupDates();
+    }, 60000);
   }
 
   ngOnDestroy(): void {
@@ -42,13 +46,38 @@ export class GroupListComponent implements OnInit, OnDestroy {
   loadGroups(courseId: string): void {
     this.eportalService.getGroups(courseId).subscribe(groups => {
       this.groups = groups;
+      this.loadClassDatesForAllGroups();
     });
   }
 
+  loadClassDatesForAllGroups(): void {
+    this.groups.forEach(group => {
+      this.eportalService.getCurrentOrNextClassDate(group.id).subscribe(classDate => {
+        this.groupClassDates.set(group.id, classDate);
+      });
+    });
+  }
+
+  refreshGroupDates(): void {
+    this.loadClassDatesForAllGroups();
+  }
+
+  getGroupClassDate(groupId: string): ClassDate | null {
+    return this.groupClassDates.get(groupId) || null;
+  }
+
   isGroupActive(group: Group): boolean {
-    const now = Date.now();
-    const groupTime = group.dateTime.getTime();
+    const classDate = this.getGroupClassDate(group.id);
+    if (!classDate) {
+      return false;
+    }
+
+    const now = new Date();
+    const startTime = new Date(classDate.startTime);
+    const endTime = new Date(classDate.endTime);
     const fiveMinutesInMillis = 5 * 60 * 1000;
-    return Math.abs(now - groupTime) <= fiveMinutesInMillis;
+
+    // Grupa jest aktywna, jeśli zajęcia się odbywają teraz lub zaczynają się za mniej niż 5 minut
+    return (startTime <= now && now <= endTime) || (startTime > now && startTime.getTime() - now.getTime() <= fiveMinutesInMillis);
   }
 }

@@ -4,6 +4,7 @@ import { Student } from 'app/model/student.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
+import { ClassDate } from 'app/model/classDate.model';
 
 @Injectable({
   providedIn: 'root'
@@ -26,12 +27,20 @@ export class EportalService {
     { id: 'c3', name: 'Bazy Danych' },
   ];
 
+  // Przykładowe dane terminów zajęć
+  private classDates: ClassDate[] = [
+    { id: 'cd1', startTime: new Date(new Date().getTime() - 60 * 60 * 1000), endTime: new Date(new Date().getTime()), description: 'Laboratorium - Pętle' },
+    { id: 'cd2', startTime: new Date(new Date().getTime() + 24 * 60 * 60 * 1000), endTime: new Date(new Date().getTime() + 25 * 60 * 60 * 1000), description: 'Wykład - Funkcje' },
+    { id: 'cd3', startTime: new Date(new Date().getTime() + 2 * 60 * 1000), endTime: new Date(new Date().getTime() + 62 * 60 * 1000), description: 'Laboratorium - Sieci' },
+    { id: 'cd4', startTime: new Date(new Date().getTime() + 48 * 60 * 60 * 1000), endTime: new Date(new Date().getTime() + 49 * 60 * 60 * 1000), description: 'Zaliczenie - Bazy Danych' },
+  ];
+
   // Przykładowe dane grup
   private groups: Group[] = [
-    { id: 'g1', courseId: 'c1', name: 'Grupa 1 (Lab)', dateTime: new Date(new Date().getTime() - 60 * 60 * 1000) }, // Zajęcia godzinę temu
-    { id: 'g2', courseId: 'c1', name: 'Grupa 2 (Wykład)', dateTime: new Date(new Date().getTime() + 24 * 60 * 60 * 1000) }, // Jutro
-    { id: 'g3', courseId: 'c2', name: 'Grupa A', dateTime: new Date(new Date().getTime() + 2 * 60 * 1000) }, // Za 2 minuty (aktywna)
-    { id: 'g4', courseId: 'c3', name: 'Grupa B', dateTime: new Date(new Date().getTime() + 48 * 60 * 60 * 1000) },
+    { id: 'g1', courseId: 'c1', name: 'Grupa 1 (Lab)', classDates: [this.classDates[0]] },
+    { id: 'g2', courseId: 'c1', name: 'Grupa 2 (Wykład)', classDates: [this.classDates[1]] },
+    { id: 'g3', courseId: 'c2', name: 'Grupa A', classDates: [this.classDates[2]] },
+    { id: 'g4', courseId: 'c3', name: 'Grupa B', classDates: [this.classDates[3]] },
   ];
 
   getStudents(groupId: string): Observable<Student[]> {
@@ -70,5 +79,42 @@ export class EportalService {
   getCourse(courseId: string): Observable<Course | undefined> {
     const course = this.courses.find(c => c.id === courseId);
     return of(course);
+  }
+
+  getClassDates(groupId: string): Observable<ClassDate[]> {
+    // Pobiera terminy zajęć dla określonej grupy
+    const group = this.groups.find(g => g.id === groupId);
+    const classDates = group?.classDates || [];
+    return of(classDates);
+  }
+
+  getCurrentOrNextClassDate(groupId: string): Observable<ClassDate | null> {
+    // Pobiera termin zajęć, które się odbywają teraz lub najbliższy w przyszłości
+    const group = this.groups.find(g => g.id === groupId);
+    const classDates = group?.classDates || [];
+
+    if (classDates.length === 0) {
+      return of(null);
+    }
+
+    const now = new Date();
+
+    // Szukamy terminu, który się właśnie odbiera (startTime <= now <= endTime)
+    const currentClassDate = classDates.find(cd => {
+      const startTime = new Date(cd.startTime);
+      const endTime = new Date(cd.endTime);
+      return startTime <= now && now <= endTime;
+    });
+
+    if (currentClassDate) {
+      return of(currentClassDate);
+    }
+
+    // Szukamy najbliższego terminu w przyszłości
+    const futureClassDates = classDates
+      .filter(cd => new Date(cd.startTime) > now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+    return of(futureClassDates.length > 0 ? futureClassDates[0] : null);
   }
 }

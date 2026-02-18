@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EportalService } from 'app/service/eportal.service';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
+import { ClassDate } from 'app/model/classDate.model';
 import { StudentListComponent } from 'app/component/attendance/student-list.component';
 
 @Component({
@@ -16,6 +17,7 @@ import { StudentListComponent } from 'app/component/attendance/student-list.comp
 export class AttendancePanel implements OnInit {
   group: Group | undefined;
   course: Course | undefined;
+  currentClassDate: ClassDate | null = null;
   instructor = 'dr inż. Jan Niezbędny'; // Dane prowadzącego (na razie statyczne)
 
   private route = inject(ActivatedRoute);
@@ -30,6 +32,10 @@ export class AttendancePanel implements OnInit {
           if (group) {
             this.eportalService.getCourse(group.courseId).subscribe(course => {
               this.course = course;
+            });
+            // Pobranie aktualnego lub następnego terminu zajęć
+            this.eportalService.getCurrentOrNextClassDate(groupId).subscribe(classDate => {
+              this.currentClassDate = classDate;
             });
           }
         });
