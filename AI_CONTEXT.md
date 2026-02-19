@@ -19,4 +19,8 @@ Używaj nowszych mechanizmów z Angular 21 (signal, funkcji input() itp.)
 
 do przechowywania danych używaj @capacitor/preferences
 
+do routingu używać adresów url z parametrami, nigdy nie używać stosu historii przeglądarki.
+
 Zrobić "Deep Scan".
+
+dobry LLM - Claude Haiki 4.5

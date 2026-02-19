@@ -49,9 +49,33 @@ export class StudentListComponent {
       if (gid) {
         this.eportalService.getStudents(gid).subscribe(list => {
           this.students.set(list || []);
+          this.scrollToSelectedIfPresent();
         });
       } else {
         this.students.set([]);
+      }
+    });
+
+    // Watch query params for 'selected' student ID
+    this.route.queryParamMap.subscribe(q => {
+      const selectedId = q.get('selected');
+      if (selectedId) {
+        this.scrollToSelectedIfPresent();
+      }
+    });
+  }
+
+  private scrollToSelectedIfPresent() {
+    this.route.queryParamMap.subscribe(q => {
+      const selectedId = q.get('selected');
+      if (selectedId) {
+        const studentList = this.students();
+        const index = studentList.findIndex(s => s.id === selectedId);
+        if (index >= 0) {
+          setTimeout(() => {
+            this.scrollToStudent(index);
+          }, 100);
+        }
       }
     });
   }

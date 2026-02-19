@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { Preferences } from '@capacitor/preferences';
 
 @Injectable({
@@ -14,8 +14,16 @@ export class StorageService {
   }
 
   async getStorage(key: string) {
-    const { value } = await Preferences.get({ key: key });
-    return value ? JSON.parse(value) : null; // Odczytujemy i zamieniamy na obiekt/typ
+    try {
+      const { value } = await Preferences.get({ key: key });
+      if (!value) {
+        return null;
+      }
+      return JSON.parse(value);
+    } catch (error) {
+      console.error('Błąd przy odczytywaniu:', error);
+      return null;
+    }
   }
 
   async removeStorage(key: string) {
