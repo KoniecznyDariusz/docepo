@@ -10,9 +10,12 @@ import { AttendanceStatus } from "app/model/AttendanceStatus.model";
   imports: [CommonModule, AttendanceButtonComponent],
   template: `
     <div class="flex items-center justify-between px-6 h-20 snap-center shrink-0 border-b border-gray-800">
-      <div class="text-left" (click)="onProfileClick.emit(student().id)">
-        <p class="text-white font-bold leading-tight">{{ student().lastName }}</p>
-        <p class="text-gray-400 text-sm">{{ student().firstName }}</p>
+      <div class="flex items-center gap-4">
+        <span class="text-xl font-bold text-blue-400 min-w-[0rem]">{{ index() + 1 }}</span>
+        <div class="text-left" (click)="onProfileClick.emit(student().id)">
+          <p class="text-white font-bold leading-tight">{{ student().lastName }}</p>
+          <p class="text-gray-400 text-sm">{{ student().firstName }}</p>
+        </div>
       </div>
 
       <div class="flex gap-2">
@@ -29,6 +32,7 @@ import { AttendanceStatus } from "app/model/AttendanceStatus.model";
 })
 export class StudentRowComponent {
   student = input.required<Student>();
+  index = input.required<number>();
   onStatusChange = output<{studentId: string, status: AttendanceStatus | null}>();
   onProfileClick = output<string>();
 
