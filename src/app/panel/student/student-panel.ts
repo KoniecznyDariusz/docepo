@@ -39,7 +39,7 @@ export class StudentPanel implements OnInit, OnDestroy {
             // back -> attendance (pierwszy termin) albo grupy
             const firstClassDateId = g.classDates?.[0]?.id;
             if (firstClassDateId) {
-              this.backNav.setBackUrl(`/attendance/${firstClassDateId}`);
+              this.backNav.setBackUrl(`/attendance/${firstClassDateId}?selected=${studentId}`);
             } else {
               this.backNav.setBackUrl(`/groups/${g.courseId}`);
             }

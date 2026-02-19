@@ -21,11 +21,17 @@ export class AttendancePanel implements OnInit, OnDestroy {
   currentClassDate: ClassDate | null = null;
   instructor = 'dr inż. Jan Niezbędny'; // Dane prowadzącego (na razie statyczne)
 
+  selectedStudentId: string | null = null;
+
   private route = inject(ActivatedRoute);
   private eportalService = inject(MoodleService);
   private backNav = inject(BackNavigationService);
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe(q => {
+      this.selectedStudentId = q.get('selected');
+    });
+
     // Observe route params: classDateId (uniquely identifies a specific session with all students)
     this.route.params.subscribe(p => {
       const classDateId = p['classDateId'];

@@ -28,20 +28,33 @@ export class MoodleService {
     { id: 'c3', name: 'Bazy Danych' },
   ];
 
+  // Ułatwia tworzenie dat względem "teraz"
+  private now = Date.now();
+
   // Przykładowe dane terminów zajęć
   private classDates: ClassDate[] = [
-    { id: 'cd1', startTime: new Date(new Date().getTime() - 60 * 60 * 1000), endTime: new Date(new Date().getTime()), description: 'Laboratorium - Pętle' },
-    { id: 'cd2', startTime: new Date(new Date().getTime() + 24 * 60 * 60 * 1000), endTime: new Date(new Date().getTime() + 25 * 60 * 60 * 1000), description: 'Wykład - Funkcje' },
-    { id: 'cd3', startTime: new Date(new Date().getTime() + 2 * 60 * 1000), endTime: new Date(new Date().getTime() + 62 * 60 * 1000), description: 'Laboratorium - Sieci' },
-    { id: 'cd4', startTime: new Date(new Date().getTime() + 48 * 60 * 60 * 1000), endTime: new Date(new Date().getTime() + 49 * 60 * 60 * 1000), description: 'Zaliczenie - Bazy Danych' },
+    // c1
+    { id: 'cd1', startTime: new Date(this.now - 60 * 60 * 1000), endTime: new Date(this.now), description: 'Laboratorium - Pętle' },
+    { id: 'cd2', startTime: new Date(this.now + 24 * 60 * 60 * 1000), endTime: new Date(this.now + 25 * 60 * 60 * 1000), description: 'Wykład - Funkcje' },
+
+    // c2 / Grupa A (kilka wcześniejszych i późniejszych terminów)
+    { id: 'cdA1', startTime: new Date(this.now - 7 * 24 * 60 * 60 * 1000), endTime: new Date(this.now - 7 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 1' },
+    { id: 'cdA2', startTime: new Date(this.now - 3 * 24 * 60 * 60 * 1000), endTime: new Date(this.now - 3 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 2' },
+    { id: 'cdA3', startTime: new Date(this.now - 24 * 60 * 60 * 1000), endTime: new Date(this.now - 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 3' },
+    { id: 'cdA_NOW', startTime: new Date(this.now - 15 * 60 * 1000), endTime: new Date(this.now + 75 * 60 * 1000), description: 'Sieci - Lab (bieżące)' },
+    { id: 'cdA4', startTime: new Date(this.now + 24 * 60 * 60 * 1000), endTime: new Date(this.now + 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 4' },
+    { id: 'cdA5', startTime: new Date(this.now + 3 * 24 * 60 * 60 * 1000), endTime: new Date(this.now + 3 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 5' },
+
+    // c3
+    { id: 'cd4', startTime: new Date(this.now + 48 * 60 * 60 * 1000), endTime: new Date(this.now + 49 * 60 * 60 * 1000), description: 'Zaliczenie - Bazy Danych' },
   ];
 
   // Przykładowe dane grup
   private groups: Group[] = [
     { id: 'g1', courseId: 'c1', name: 'Grupa 1 (Lab)', classDates: [this.classDates[0]] },
     { id: 'g2', courseId: 'c1', name: 'Grupa 2 (Wykład)', classDates: [this.classDates[1]] },
-    { id: 'g3', courseId: 'c2', name: 'Grupa A', classDates: [this.classDates[2]] },
-    { id: 'g4', courseId: 'c3', name: 'Grupa B', classDates: [this.classDates[3]] },
+    { id: 'g3', courseId: 'c2', name: 'Grupa A', classDates: [this.classDates[2], this.classDates[3], this.classDates[4], this.classDates[5], this.classDates[6], this.classDates[7]] },
+    { id: 'g4', courseId: 'c3', name: 'Grupa B', classDates: [this.classDates[8]] },
   ];
 
   // Przykładowe dane obecności (attendance) dla wszystkich kombinacji studentów × terminów
@@ -178,10 +191,13 @@ export class MoodleService {
     const statuses: AttendanceStatus[] = ['P', 'A', 'L', null];
     let id = 1;
 
+    const now = new Date();
+
     this.classDates.forEach(classDate => {
+      const isFuture = new Date(classDate.startTime) > now;
+
       this.students.forEach((student, idx) => {
-        // każdy student ma status zmieniający się dla różnych terminów
-        const status = statuses[idx % statuses.length];
+        const status = isFuture ? null : statuses[idx % statuses.length];
         attendances.push({
           id: `a${id}`,
           studentId: student.id,
