@@ -1,19 +1,20 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { GroupListComponent } from 'app/component/group-list/group-list.component';
+import { BackNavigationService } from 'app/service/back-navigation.service';
 
 @Component({
   selector: 'app-group-panel',
   standalone: true,
-  imports: [CommonModule, RouterLink, GroupListComponent],
+  imports: [CommonModule, GroupListComponent],
   templateUrl: './group-panel.html',
   styleUrls: ['./group-panel.css']
 })
-export class GroupPanel implements OnInit {
+export class GroupPanel implements OnInit, OnDestroy {
   groups: Group[] = [];
   groupClassDates: { [id: string]: ClassDate | null } = {};
   courseId!: string;
@@ -21,12 +22,19 @@ export class GroupPanel implements OnInit {
 
   private route = inject(ActivatedRoute);
   private eportalService = inject(MoodleService);
+  private backNav = inject(BackNavigationService);
 
   ngOnInit(): void {
+    this.backNav.setBackUrl('/course');
+
     this.route.params.subscribe(params => {
       this.courseId = params['courseId'];
       this.loadCourseAndGroups(this.courseId);
     });
+  }
+
+  ngOnDestroy(): void {
+    this.backNav.clearBackUrl();
   }
 
   private loadCourseAndGroups(courseId: string) {
@@ -43,5 +51,9 @@ export class GroupPanel implements OnInit {
         this.groupClassDates[g.id] = cd;
       });
     });
+  }
+
+  onBack(): void {
+    this.backNav.goBack(this.route.snapshot);
   }
 }

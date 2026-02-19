@@ -1,12 +1,13 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Student } from 'app/model/student.model';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
 import { StudentAttendancesComponent } from 'app/component/student/student-attendances/student-attendances.component';
 import { StudentTasklistsComponent } from 'app/component/student/student-tasklists/student-tasklists.component';
+import { BackNavigationService } from 'app/service/back-navigation.service';
 
 @Component({
   selector: 'app-student-panel',
@@ -15,14 +16,14 @@ import { StudentTasklistsComponent } from 'app/component/student/student-tasklis
   templateUrl: './student-panel.html',
   styleUrls: ['./student-panel.css']
 })
-export class StudentPanel implements OnInit {
+export class StudentPanel implements OnInit, OnDestroy {
   student: Student | undefined;
   group: Group | undefined;
   course: Course | undefined;
 
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
   private eportalService = inject(MoodleService);
+  private backNav = inject(BackNavigationService);
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -34,6 +35,15 @@ export class StudentPanel implements OnInit {
           this.group = g;
           if (g) {
             this.eportalService.getCourse(g.courseId).subscribe(c => this.course = c);
+
+            // back -> attendance (pierwszy termin) albo grupy
+            const firstClassDateId = g.classDates?.[0]?.id;
+            if (firstClassDateId) {
+              this.backNav.setBackUrl(`/attendance/${firstClassDateId}`);
+            } else {
+              this.backNav.setBackUrl(`/groups/${g.courseId}`);
+            }
+
             // pobierz studentów i znajdź konkretnego
             this.eportalService.getStudents(groupId).subscribe(list => {
               this.student = list.find(s => s.id === studentId);
@@ -44,19 +54,11 @@ export class StudentPanel implements OnInit {
     });
   }
 
-  back() {
-    const groupId = this.group?.id;
-    if (!groupId) {
-      return;
-    }
+  ngOnDestroy(): void {
+    this.backNav.clearBackUrl();
+  }
 
-    // Navigate back to attendance for first classDate of the group
-    this.eportalService.getGroup(groupId).subscribe(g => {
-      if (g && g.classDates && g.classDates.length > 0) {
-        this.router.navigate(['/attendance', g.classDates[0].id]);
-      } else {
-        this.router.navigate(['/groups', this.group?.courseId]);
-      }
-    });
+  onBack(): void {
+    this.backNav.goBack(this.route.snapshot);
   }
 }

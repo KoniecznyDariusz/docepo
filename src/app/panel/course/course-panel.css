@@ -105,3 +105,15 @@
 .course-item.highlighted:hover {
   transform: scale(1.03) translateY(-2px);
 }
+
+/* --- Podsumowanie kursów --- */
+.courses-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exit-btn {
+  padding: 8px 14px;
+  cursor: pointer;
+}

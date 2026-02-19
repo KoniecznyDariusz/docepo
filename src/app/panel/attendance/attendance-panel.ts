@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
@@ -6,6 +6,7 @@ import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { StudentListComponent } from 'app/component/attendance/student-list.component';
+import { BackNavigationService } from 'app/service/back-navigation.service';
 
 @Component({
   selector: 'app-attendance-panel',
@@ -14,7 +15,7 @@ import { StudentListComponent } from 'app/component/attendance/student-list.comp
   templateUrl: './attendance-panel.html',
   styleUrl: './attendance-panel.css'
 })
-export class AttendancePanel implements OnInit {
+export class AttendancePanel implements OnInit, OnDestroy {
   group: Group | undefined;
   course: Course | undefined;
   currentClassDate: ClassDate | null = null;
@@ -22,6 +23,7 @@ export class AttendancePanel implements OnInit {
 
   private route = inject(ActivatedRoute);
   private eportalService = inject(MoodleService);
+  private backNav = inject(BackNavigationService);
 
   ngOnInit() {
     // Observe route params: classDateId (uniquely identifies a specific session with all students)
@@ -33,6 +35,8 @@ export class AttendancePanel implements OnInit {
         this.eportalService.getGroupByClassDateId(classDateId).subscribe(g => {
           this.group = g;
           if (g) {
+            this.backNav.setBackUrl(`/groups/${g.courseId}`);
+
             this.eportalService.getCourse(g.courseId).subscribe(course => {
               this.course = course;
             });
@@ -43,5 +47,13 @@ export class AttendancePanel implements OnInit {
         });
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.backNav.clearBackUrl();
+  }
+
+  onBack(): void {
+    this.backNav.goBack(this.route.snapshot);
   }
 }

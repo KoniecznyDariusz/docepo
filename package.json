@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "start2": "ng serve --host 192.168.0.112 --port 3000",
+    "start3": "ng serve --host 192.168.0.249 --port 3000",
+    "startpwr": "ng serve --host 10.108.42.45 --port 3000",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

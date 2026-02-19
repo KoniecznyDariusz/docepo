@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Course } from 'app/model/course.model';
 import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
+import { ActivatedRoute } from '@angular/router';
+import { BackNavigationService } from 'app/service/back-navigation.service';
 
 @Component({
   selector: 'app-course-panel',
@@ -12,20 +14,38 @@ import { ClassDate } from 'app/model/classDate.model';
   templateUrl: './course-panel.html',
   styleUrl: './course-panel.css',
 })
-export class CoursePanel implements OnInit {
+export class CoursePanel implements OnInit, OnDestroy {
   courses: Course[] = [];
   courseHighlighted: { [id: string]: boolean } = {};
   // Przykładowe ID prowadzącego - w przyszłości pobrane np. po zalogowaniu
   private lecturerId = 'darius-123';
 
-  constructor(private eportalService: MoodleService) {}
+  constructor(
+    private eportalService: MoodleService,
+    private route: ActivatedRoute,
+    private backNav: BackNavigationService
+  ) {}
 
   ngOnInit(): void {
+    //this.backNav.setBackUrl('/moodle-selection');
+
     this.eportalService.getCourses(this.lecturerId).subscribe(courses => {
       this.courses = courses;
       // sprawdź dla każdego kursu, czy ma wyróżnioną grupę
       this.courses.forEach(c => this.evaluateCourseHighlight(c.id));
     });
+  }
+
+  ngOnDestroy(): void {
+    this.backNav.clearBackUrl();
+  }
+
+  onExit(): void {
+    this.backNav.exitApp();
+  }
+
+  onBack(): void {
+    this.backNav.goBack(this.route.snapshot);
   }
 
   private evaluateCourseHighlight(courseId: string) {

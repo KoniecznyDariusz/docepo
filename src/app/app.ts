@@ -1,6 +1,9 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+import { BackNavigationService } from './service/back-navigation.service';
+import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import type { PluginListenerHandle } from '@capacitor/core';
 
 @Component({
   selector: 'app-root',
@@ -14,29 +17,29 @@ import { App as CapacitorApp } from '@capacitor/app';
     }
   `]
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   protected readonly title = signal('DocEpo');
 
-  ngOnInit() {
-    this.setupBackButton();
+  private backButtonListener?: PluginListenerHandle;
+
+  constructor(
+    private readonly router: Router,
+    private readonly backNav: BackNavigationService
+  ) {}
+
+  async ngOnInit(): Promise<void> {
+    await this.setupBackButton();
   }
 
-  private setupBackButton() {
-    CapacitorApp.addListener('backButton', async (event?: { canGoBack?: boolean }) => {
-      // Jeśli natywny WebView może cofnąć (Android) lub historia przeglądarki ma wpisy
-      const nativeCanGoBack = !!event?.canGoBack;
-      const webHistoryCanGoBack = window.history.length > 1;
+  private async setupBackButton(): Promise<void> {
+    if (Capacitor.getPlatform() !== 'web') {
+      this.backButtonListener = await CapacitorApp.addListener('backButton', () => {
+        this.backNav.goBack(this.router.routerState.snapshot.root);
+      });
+    }
+  }
 
-      if (nativeCanGoBack || webHistoryCanGoBack) {
-        window.history.back();
-        return;
-      }
-
-      // Brak historii — pytamy użytkownika czy chce wyjść
-      const shouldExit = confirm('Czy na pewno chcesz wyjść z aplikacji?');
-      if (shouldExit) {
-        CapacitorApp.exitApp();
-      }
-    });
+  ngOnDestroy(): void {
+    this.backButtonListener?.remove();
   }
 }
