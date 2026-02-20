@@ -16,7 +16,11 @@ export class StudentAttendancesComponent {
 
   private moodle = inject(MoodleService);
   attendances = signal<Attendance[]>([]);
-  private classDatesMap = signal<Record<string,string>>({});
+  classDatesMap = signal<Record<string,{date: string, description: string}>>({});
+  
+  // Modal state
+  selectedAttendance = signal<Attendance | null>(null);
+  showModal = signal(false);
 
   constructor() {
     // effect must run in an injection context; constructor is valid
@@ -29,15 +33,21 @@ export class StudentAttendancesComponent {
       }
 
       this.moodle.getAttendancesForStudent(sid, gid).subscribe(list => {
-        console.log('Fetched attendances for student', sid, 'in group', gid, list); 
         this.attendances.set(list || []);
       });
 
-      // cache classDate descriptions for display
+      // cache classDate descriptions and dates for display
       const group = this.moodle.getGroup(gid);
       group.subscribe(g => {
-        const map: Record<string,string> = {};
-        (g?.classDates || []).forEach(cd => map[cd.id] = cd.description || `${cd.startTime}`);
+        const map: Record<string,{date: string, description: string}> = {};
+        (g?.classDates || []).forEach(cd => {
+          const date = new Date(cd.startTime);
+          const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+          map[cd.id] = {
+            date: dateStr,
+            description: cd.description || `Termin ${dateStr}`
+          };
+        });
         this.classDatesMap.set(map);
       });
     });
@@ -46,6 +56,42 @@ export class StudentAttendancesComponent {
   getClassDateDesc(classDateId?: string) {
     if (!classDateId) return '';
     const map = this.classDatesMap();
-    return map[classDateId] ?? classDateId;
+    const entry = map[classDateId];
+    if (!entry) return classDateId;
+    return `${entry.date}\n${entry.description}`;
+  }
+
+  isCurrentClassDate(classDateId: string): boolean {
+    return this.moodle.isCurrentClassDate(classDateId);
+  }
+
+  openAttendanceDetail(attendance: Attendance) {
+    this.selectedAttendance.set(attendance);
+    this.showModal.set(true);
+  }
+
+  closeModal() {
+    this.showModal.set(false);
+    this.selectedAttendance.set(null);
+  }
+
+  getStatusLabel(status: string | null): string {
+    const labels: Record<string, string> = {
+      'P': 'Obecny',
+      'A': 'Nieobecny',
+      'L': 'Spóźniony'
+    };
+    return status ? labels[status] || status : 'Brak danych';
+  }
+
+  getAttendanceInfo(): {date: string; description: string; status: string | null} | null {
+    const att = this.selectedAttendance();
+    if (!att) return null;
+    const dateInfo = this.classDatesMap()[att.classDateId];
+    return {
+      date: dateInfo?.date || '-',
+      description: dateInfo?.description || '-',
+      status: att.status || null
+    };
   }
 }

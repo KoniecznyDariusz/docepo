@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
@@ -20,6 +20,8 @@ export class StudentPanel implements OnInit, OnDestroy {
   student: Student | undefined;
   group: Group | undefined;
   course: Course | undefined;
+  groupId: string | undefined;
+  showInfoModal = signal(false);
 
   private route = inject(ActivatedRoute);
   private eportalService = inject(MoodleService);
@@ -28,10 +30,11 @@ export class StudentPanel implements OnInit, OnDestroy {
   ngOnInit() {
     this.route.params.subscribe(params => {
       const studentId = params['studentId'];
-      const groupId = params['groupId'];
+      const groupIdParam = params['groupId'];
+      this.groupId = groupIdParam;
 
-      if (studentId && groupId) {
-        this.eportalService.getGroup(groupId).subscribe(g => {
+      if (studentId && groupIdParam) {
+        this.eportalService.getGroup(groupIdParam).subscribe(g => {
           this.group = g;
           if (g) {
             this.eportalService.getCourse(g.courseId).subscribe(c => this.course = c);
@@ -45,7 +48,7 @@ export class StudentPanel implements OnInit, OnDestroy {
             }
 
             // pobierz studentów i znajdź konkretnego
-            this.eportalService.getStudents(groupId).subscribe(list => {
+            this.eportalService.getStudents(groupIdParam).subscribe(list => {
               this.student = list.find(s => s.id === studentId);
             });
           }
@@ -60,5 +63,13 @@ export class StudentPanel implements OnInit, OnDestroy {
 
   onBack(): void {
     this.backNav.goBack(this.route.snapshot);
+  }
+
+  openInfoModal(): void {
+    this.showInfoModal.set(true);
+  }
+
+  closeInfoModal(): void {
+    this.showInfoModal.set(false);
   }
 }

@@ -4,6 +4,7 @@ import { GroupListComponent } from 'app/component/group-list/group-list.componen
 import { GroupPanel } from './panel/group/group-panel';
 import { AttendancePanel } from 'app/panel/attendance/attendance-panel';
 import { StudentPanel } from './panel/student/student-panel';
+import { SolutionPanel } from './panel/solution/solution-panel';
 import { MoodleSelectionPanel } from './panel/moodle-selection/moodle-selection-panel';
 import { moodleSelectionGuard } from './guard/moodle-selection.guard';
 
@@ -14,6 +15,7 @@ export const routes: Routes = [
     { path: 'groups/:courseId', component: GroupPanel, canActivate: [moodleSelectionGuard], data: { backTo: '/course' } },
     { path: 'attendance/:classDateId', component: AttendancePanel, canActivate: [moodleSelectionGuard] },
     { path: 'student/:studentId/:groupId', component: StudentPanel, canActivate: [moodleSelectionGuard] },
+    { path: 'solution/:studentId/:taskId', component: SolutionPanel, canActivate: [moodleSelectionGuard] },
     {
         path: 'panel/group/:groupId',
         loadComponent: () => import('./panel/group/group-panel').then(m => m.GroupPanel),

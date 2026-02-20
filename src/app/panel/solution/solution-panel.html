@@ -1,0 +1,173 @@
+<div class="solution-panel h-screen flex flex-col bg-gray-900 text-white">
+  <header class="flex-none p-4 border-b border-gray-700 bg-gray-800 shadow-md z-20">
+    <div class="flex justify-between items-center">
+      <div>
+        <p class="text-lg font-bold text-white">{{ task?.name }}</p>
+      </div>
+      <button 
+        type="button" 
+        (click)="openInfoModal()"
+        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors">
+        Info
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-auto p-4 space-y-4">
+    @if (solution && task) {
+      <!-- Solution Details -->
+      <section class="bg-gray-800 p-4 rounded-md">
+        <h3 class="text-lg font-semibold text-blue-300">{{ task.name }} - {{ task.description }}</h3>
+        
+        <div class="mt-4 space-y-3">
+          <div>
+            <p class="text-sm text-gray-400">Data wykonania</p>
+            <p class="text-base font-semibold">{{ solution.completedAt | date: 'yyyy-MM-dd HH:mm' }}</p>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-400">Punkty</p>
+            <p class="text-base font-semibold">
+              {{ solution.points }} / {{ task.maxPoints }}
+            </p>
+            <div class="mt-2 w-full bg-gray-700 rounded-full h-2.5">
+              <div 
+                class="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+                [ngStyle]="{ 'width.%': (solution.points / task.maxPoints) * 100 }">
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-400">Stan</p>
+            <p class="text-base font-semibold" 
+              [class.text-green-400]="solution.status === 'P'"
+              [class.text-red-400]="solution.status === 'N'"
+              [class.text-yellow-400]="solution.status === 'W' || solution.status === 'C'"
+              [class.text-blue-400]="solution.status === 'U' || solution.status === 'G'">
+              {{ solution.status || '-' }}
+            </p>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-400">Komentarz</p>
+            <div class="flex items-center justify-between">
+              <p class="text-base font-semibold">{{ solution.comment || '-' }}</p>
+              <div class="flex gap-2">
+                <button 
+                  type="button" 
+                  (click)="openCommentEditor()"
+                  class="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors"
+                  title="Edytuj komentarz">
+                  ✏️
+                </button>
+                <button 
+                  type="button" 
+                  (click)="startRecording()"
+                  [disabled]="isRecording()"
+                  [class.opacity-50]="isRecording()"
+                  class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors disabled:cursor-not-allowed"
+                  [title]="isRecording() ? 'Nagrywanie...' : 'Dodaj komentarz mówiąc'">
+                  🎤
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TODO: Edycja rozwiązania - punkty, status, komentarz -->
+    } @else {
+      <p class="text-gray-400">Ładowanie danych...</p>
+    }
+  </main>
+
+  <!-- Comment Editor Modal -->
+  @if (isEditingComment()) {
+    <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closeCommentEditor()">
+      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96 max-h-96 overflow-auto" (click)="$event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-white">Edytuj komentarz</h2>
+          <button 
+            type="button" 
+            (click)="closeCommentEditor()"
+            class="text-gray-400 hover:text-white text-2xl font-bold">
+            ×
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <textarea 
+            [(ngModel)]="commentText"
+            placeholder="Wpisz komentarz..."
+            class="w-full p-3 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none min-h-32 resize-none">
+          </textarea>
+
+          <div class="flex gap-2">
+            <button 
+              type="button" 
+              (click)="saveComment()"
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors">
+              Zapisz
+            </button>
+            <button 
+              type="button" 
+              (click)="closeCommentEditor()"
+              class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
+              Anuluj
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Info Modal -->
+  @if (showInfoModal()) {
+    <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closeInfoModal()">
+      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96 max-h-96 overflow-auto" (click)="$event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-white">Informacje</h2>
+          <button 
+            type="button" 
+            (click)="closeInfoModal()"
+            class="text-gray-400 hover:text-white text-2xl font-bold">
+            ×
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <p class="text-sm text-gray-400">Student</p>
+            <p class="text-base font-semibold text-white">{{ student?.lastName }} {{ student?.firstName }}</p>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-400">Przedmiot</p>
+            <p class="text-base font-semibold text-white">{{ course?.name || '-' }}</p>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-400">Grupa</p>
+            <p class="text-base font-semibold text-white">{{ group?.name || '-' }}</p>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-400">Zadanie</p>
+            <p class="text-base font-semibold text-white">{{ task?.name }} - {{ task?.description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Footer -->
+  <footer class="flex-none p-4 border-t border-gray-700 bg-gray-800">
+    <button 
+      type="button" 
+      (click)="onBack()"
+      class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors">
+      Wstecz
+    </button>
+  </footer>
+</div>

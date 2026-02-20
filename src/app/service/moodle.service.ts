@@ -6,6 +6,8 @@ import { Attendance } from 'app/model/attendance.model';
 import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
+import { Task } from 'app/model/task.model';
+import { Solution, SolutionStatus } from 'app/model/solution.model';
 
 @Injectable({
   providedIn: 'root'
@@ -57,8 +59,19 @@ export class MoodleService {
     { id: 'g4', courseId: 'c3', name: 'Grupa B', classDates: [this.classDates[8]] },
   ];
 
+  // Przykładowe dane zadań
+  private tasks: Task[] = [
+    { id: 't1', courseId: 'c2', name: 'L01', description: 'Podstawowe pętle i warunki', maxPoints: 100, dueDate: new Date(this.now + 7 * 24 * 60 * 60 * 1000) },
+    { id: 't2', courseId: 'c2', name: 'L02', description: 'Funkcje i rekurencja', maxPoints: 100, dueDate: new Date(this.now + 14 * 24 * 60 * 60 * 1000) },
+    { id: 't3', courseId: 'c2', name: 'L03', description: 'Tablice i struktury danych', maxPoints: 50, dueDate: new Date(this.now + 21 * 24 * 60 * 60 * 1000) },
+    { id: 't4', courseId: 'c2', name: 'L04', description: 'Zaawansowane algorytmy', maxPoints: 100, dueDate: new Date(this.now + 28 * 24 * 60 * 60 * 1000) },
+  ];
+
   // Przykładowe dane obecności (attendance) dla wszystkich kombinacji studentów × terminów
   private attendances: Attendance[] = this.generateAttendances();
+
+  // Przykładowe dane rozwiązań (solutions) dla wszystkich kombinacji studentów × zadań
+  private solutions: Solution[] = this.generateSolutions();
 
   getStudents(groupId: string): Observable<Student[]> {
     // Tutaj w przyszłości będzie wywołanie np. this.http.get<Student[]>(`api/groups/${groupId}/students`)
@@ -185,6 +198,69 @@ export class MoodleService {
     return of(futureClassDates.length > 0 ? futureClassDates[0] : null);
   }
 
+  // Sprawdza, czy dany termin jest bieżący (odbywa się teraz)
+  isCurrentClassDate(classDateId: string): boolean {
+    const classDate = this.classDates.find(cd => cd.id === classDateId);
+    if (!classDate) {
+      return false;
+    }
+
+    const now = new Date();
+    const startTime = new Date(classDate.startTime);
+    const endTime = new Date(classDate.endTime);
+    return startTime <= now && now <= endTime;
+  }
+
+  // Pobiera wszystkie zadania dla danego kursu
+  getTasks(courseId: string): Observable<Task[]> {
+    const tasks = this.tasks.filter(t => t.courseId === courseId);
+    return of(tasks);
+  }
+
+  // Pobiera zadanie po ID
+  getTask(taskId: string): Observable<Task | undefined> {
+    const task = this.tasks.find(t => t.id === taskId);
+    return of(task);
+  }
+
+  // Pobiera wszystkie rozwiązania dla danego studenta
+  getSolutionsForStudent(studentId: string): Observable<Solution[]> {
+    const solutions = this.solutions.filter(s => s.studentId === studentId);
+    return of(solutions);
+  }
+
+  // Pobiera rozwiązania studenta dla danego kursu, posortowane po dacie zadania
+  getSolutionsForStudentInCourse(studentId: string, courseId: string): Observable<Solution[]> {
+    const courseTasks = this.tasks.filter(t => t.courseId === courseId);
+    const taskIds = new Set(courseTasks.map(t => t.id));
+    
+    const solutions = this.solutions
+      .filter(s => s.studentId === studentId && taskIds.has(s.taskId))
+      .sort((a, b) => {
+        const taskA = this.tasks.find(t => t.id === a.taskId);
+        const taskB = this.tasks.find(t => t.id === b.taskId);
+        if (!taskA || !taskB) return 0;
+        return new Date(taskA.dueDate).getTime() - new Date(taskB.dueDate).getTime();
+      });
+    
+    return of(solutions);
+  }
+
+  // Pobiera rozwiązanie dla konkretnego studenta i zadania
+  getSolution(studentId: string, taskId: string): Observable<Solution | undefined> {
+    const solution = this.solutions.find(s => s.studentId === studentId && s.taskId === taskId);
+    return of(solution);
+  }
+
+  // Aktualizuje rozwiązanie
+  updateSolution(studentId: string, taskId: string, updates: Partial<Solution>): Observable<void> {
+    const solution = this.solutions.find(s => s.studentId === studentId && s.taskId === taskId);
+    if (solution) {
+      Object.assign(solution, updates);
+    }
+    return of(void 0);
+  }
+
   // Wygeneruj wszystkie wpisy attendance dla każdej kombinacji studenta × classDate
   private generateAttendances(): Attendance[] {
     const attendances: Attendance[] = [];
@@ -209,5 +285,65 @@ export class MoodleService {
     });
 
     return attendances;
+  }
+
+  // Wygeneruj wszystkie wpisy solutions dla każdej kombinacji studenta × zadania
+  private generateSolutions(): Solution[] {
+    const solutions: Solution[] = [];
+    const solutionStatuses: SolutionStatus[] = ['P', 'G', 'U', 'P', 'C', 'W', 'G', 'U']; // Więcej statusów z punktami
+    const comments = [
+      'Pozytywnie zaliczone',
+      'Ocenione: 85 pkt',
+      'Wgrane na portal',
+      'Pozytywnie zaliczone',
+      'Do poprawy: zły algorytm',
+      'Uwaga: brakuje komentarzy',
+      'Ocenione: 75 pkt',
+      'Wgrane na portal'
+    ];
+
+    let id = 1;
+    const now = new Date();
+
+    this.tasks.forEach((task, taskIdx) => {
+      this.students.forEach((student, studentIdx) => {
+        // Losowo przydzielaj status
+        const statusIdx = (taskIdx + studentIdx * 2) % solutionStatuses.length;
+        const status = solutionStatuses[statusIdx];
+        
+        // Liczba punktów zależy od statusu i maxPoints zadania
+        let points = 0;
+        if (status === 'P') {
+          points = task.maxPoints; // 100%
+        } else if (status === 'G') {
+          points = Math.floor(task.maxPoints * (0.75 + Math.random() * 0.25)); // 75-100%
+        } else if (status === 'U') {
+          points = Math.floor(task.maxPoints * (0.65 + Math.random() * 0.3)); // 65-95%
+        } else if (status === 'C') {
+          points = Math.floor(task.maxPoints * (0.3 + Math.random() * 0.35)); // 30-65%
+        } else if (status === 'W') {
+          points = Math.floor(task.maxPoints * (0.4 + Math.random() * 0.4)); // 40-80%
+        }
+        // 'N' (negative) i '' (pusty) żadnych punktów
+
+        // Data wykonania: losowo w ostatnich 30 dniach dla zatwierdzonych, w przyszłości dla nieoce nionych
+        const completedAt = status === '' 
+          ? new Date(now.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) // przyszłość
+          : new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000); // przeszłość
+
+        solutions.push({
+          id: `s${id}`,
+          studentId: student.id,
+          taskId: task.id,
+          completedAt,
+          points,
+          comment: comments[statusIdx],
+          status
+        });
+        id++;
+      });
+    });
+
+    return solutions;
   }
 }

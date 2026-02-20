@@ -1,19 +1,64 @@
 <section class="bg-gray-800 p-4 rounded-md">
-  <h3 class="text-lg font-semibold text-blue-300">Frekwencja</h3>
-  <p class="text-sm text-gray-400 mt-2">Dane frekwencji dla studenta: {{ studentId() }}</p>
-
-  <div class="mt-3 space-y-2">
+  <div>
     @if (attendances().length === 0) {
       <p class="text-sm text-gray-400">Brak danych frekwencji dla tej grupy.</p>
     } @else {
-      @for (a of attendances(); track a.id) {
-        <div class="flex justify-between items-center bg-gray-900 p-2 rounded">
-          <div>
-            <div class="text-sm text-gray-300">Termin: {{ getClassDateDesc(a.classDateId) }}</div>
-          </div>
-          <div class="text-sm font-bold" [class.text-green-400]="a.status==='P'" [class.text-red-400]="a.status==='A'" [class.text-amber-400]="a.status==='L'">{{ a.status || '-' }}</div>
-        </div>
-      }
+      <div class="flex flex-wrap gap-1">
+        @for (a of attendances(); track a.id) {
+          <button
+            (click)="openAttendanceDetail(a)"
+            [class.ring-2]="isCurrentClassDate(a.classDateId)"
+            [class.ring-blue-400]="isCurrentClassDate(a.classDateId)"
+            [class.ring-offset-2]="isCurrentClassDate(a.classDateId)"
+            [class.ring-offset-gray-800]="isCurrentClassDate(a.classDateId)"
+            class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all cursor-pointer hover:scale-110"
+            [class.bg-green-600]="a.status==='P'"
+            [class.text-white]="a.status==='P'"
+            [class.bg-red-600]="a.status==='A'"
+            [class.text-white]="a.status==='A'"
+            [class.bg-amber-600]="a.status==='L'"
+            [class.text-white]="a.status==='L'"
+            [class.bg-slate-700]="!a.status"
+            [class.text-slate-400]="!a.status"
+            [attr.aria-label]="getClassDateDesc(a.classDateId)">
+            {{ a.status || '-' }}
+          </button>
+        }
+      </div>
     }
   </div>
+
+  <!-- Modal overlay (bottom sheet style) -->
+  @if (showModal() && selectedAttendance()) {
+    <div class="fixed inset-0 bg-black/50 z-40" (click)="closeModal()"></div>
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-900 rounded-t-lg p-6 z-50 max-h-[70vh] overflow-y-auto md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:left-1/2 md:-translate-x-1/2 md:w-96 md:rounded-lg">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-white">Szczegóły terminów</h2>
+        <button 
+          (click)="closeModal()"
+          class="text-gray-400 hover:text-white text-xl">
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-4 text-white">
+        <div>
+          <p class="text-sm text-gray-400">Data</p>
+          <p class="text-base font-semibold">{{ getAttendanceInfo()?.date || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Termin</p>
+          <p class="text-base font-semibold">{{ getAttendanceInfo()?.description || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Status obecności</p>
+          <p class="text-base font-semibold" [class.text-green-400]="getAttendanceInfo()?.status==='P'" [class.text-red-400]="getAttendanceInfo()?.status==='A'" [class.text-amber-400]="getAttendanceInfo()?.status==='L'">
+            {{ getStatusLabel(getAttendanceInfo()?.status || null) }}
+          </p>
+        </div>
+      </div>
+    </div>
+  }
 </section>

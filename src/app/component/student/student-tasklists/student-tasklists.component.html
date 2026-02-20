@@ -1,5 +1,35 @@
 <section class="bg-gray-800 p-4 rounded-md">
-  <h3 class="text-lg font-semibold text-blue-300">Zadania</h3>
-  <p class="text-sm text-gray-400 mt-2">Lista zadań dla studenta: {{ studentId() }}</p>
-  <!-- TODO: dodać listę zadań/stuby -->
+  <h3 class="text-lg font-semibold text-blue-300">Rozwiązania</h3>
+
+  <div class="mt-4">
+    @if (solutions().length === 0) {
+      <p class="text-sm text-gray-400">Brak rozwiązań dla tego kursu.</p>
+    } @else {
+      <div class="grid grid-cols-3 gap-4 md:grid-cols-4">
+        @for (solution of solutions(); track solution.id) {
+          <button
+            (click)="openSolutionDetail(solution)"
+            class="relative h-20 rounded-lg overflow-hidden transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-900">
+            
+            <!-- Bottom filled portion (colored based on status) -->
+            <div 
+              class="absolute bottom-0 left-0 right-0 transition-all duration-300"
+              [ngStyle]="{ 'height.%': getPointsPercentage(solution), 'backgroundColor': getSolutionFillColor(solution.status) }">
+            </div>
+
+            <!-- Content overlay (always on top) -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center z-10">
+              <!-- Task name in center -->
+              <p class="text-white font-bold text-sm">{{ getTask(solution.taskId)?.name || '?' }}</p>
+            </div>
+
+            <!-- Status badge in top-right corner -->
+            <div class="absolute top-1 right-1 z-20 bg-black/70 w-5 h-5 rounded-full flex items-center justify-center">
+              <span class="text-white text-xs font-bold">{{ getStatusLabel(solution.status) }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </div>
 </section>
