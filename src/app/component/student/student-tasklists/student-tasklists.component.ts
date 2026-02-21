@@ -81,6 +81,25 @@ export class StudentTasklistsComponent {
     return 'rgb(239, 68, 68)';                              // red-500
   }
 
+  getStatusBadgeColor(status: string): string {
+    switch (status) {
+      case 'G':
+        return 'bg-green-300';
+      case 'W':
+        return 'bg-green-400';
+      case 'U':
+        return 'bg-green-600';
+      case 'P':
+        return 'bg-green-700';
+      case 'N':
+        return 'bg-red-500';
+      case 'C':
+        return 'bg-yellow-400';
+      default:
+        return 'bg-gray-500';
+    }
+  }
+
   openSolutionDetail(solution: Solution): void {
     this.router.navigate(['/solution', this.studentId(), solution.taskId], {
       queryParams: {

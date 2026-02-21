@@ -24,8 +24,9 @@
             </div>
 
             <!-- Status badge in top-right corner -->
-            <div class="absolute top-1 right-1 z-20 bg-black/70 w-5 h-5 rounded-full flex items-center justify-center">
-              <span class="text-white text-xs font-bold">{{ getStatusLabel(solution.status) }}</span>
+            <div class="absolute top-1 right-1 z-20 w-5 h-5 rounded-full flex items-center justify-center border-2 border-black"
+              [ngClass]="getStatusBadgeColor(solution.status)">
+              <span class="text-black text-xs font-bold">{{ getStatusLabel(solution.status) }}</span>
             </div>
           </button>
         }

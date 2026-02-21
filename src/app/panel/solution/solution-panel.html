@@ -1,15 +1,13 @@
 <div class="solution-panel h-screen flex flex-col bg-gray-900 text-white">
   <header class="flex-none p-4 border-b border-gray-700 bg-gray-800 shadow-md z-20">
-    <p class="text-lg font-bold text-white">{{ task?.name }}</p>
+    <p class="text-lg font-bold text-white">{{ task?.name }} - {{ task?.description }}</p>
   </header>
 
   <main class="flex-1 overflow-auto p-4 space-y-4">
     @if (solution && task) {
       <!-- Solution Details -->
       <section class="bg-gray-800 p-4 rounded-md">
-        <h3 class="text-lg font-semibold text-blue-300">{{ task.name }} - {{ task.description }}</h3>
-        
-        <div class="mt-4 space-y-3">
+        <div class="space-y-3">
           <div>
             <p class="text-sm text-gray-400">Data wykonania</p>
             <p class="text-base font-semibold">{{ solution.completedAt | date: 'yyyy-MM-dd HH:mm' }}</p>
@@ -24,7 +22,7 @@
               <button 
                 type="button" 
                 (click)="openPointsEditor()"
-                class="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors"
+                class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
                 title="Edytuj punkty">
                 ✏️
               </button>
@@ -44,47 +42,107 @@
             <p class="text-sm text-gray-400">Stan</p>
             <div class="flex items-center justify-between">
               <p class="text-base font-semibold" 
-                [class.text-green-400]="solution.status === 'P'"
-                [class.text-red-400]="solution.status === 'N'"
-                [class.text-yellow-400]="solution.status === 'W' || solution.status === 'C'"
-                [class.text-blue-400]="solution.status === 'U' || solution.status === 'G'">
+                [class.text-gray-400]="!solution.status"
+                [class.text-green-300]="solution.status === 'G'"
+                [class.text-green-400]="solution.status === 'W'"
+                [class.text-green-600]="solution.status === 'U'"
+                [class.text-green-700]="solution.status === 'P'"
+                [class.text-red-500]="solution.status === 'N'"
+                [class.text-yellow-400]="solution.status === 'C'">
                 {{ getStatusDescription(solution.status || '') }}
               </p>
               <button 
                 type="button" 
                 (click)="openStatusEditor()"
-                class="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors"
+                class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
                 title="Edytuj stan">
                 ✏️
               </button>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div>
-            <p class="text-sm text-gray-400">Komentarz</p>
-            <div class="flex items-center justify-between">
-              <p class="text-base font-semibold">{{ solution.comment || '-' }}</p>
-              <div class="flex gap-2">
+      <!-- Comment Section (full width) -->
+      <section class="bg-gray-800 p-4 rounded-md">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm text-gray-400">Komentarz</p>
+          <div class="flex gap-2 justify-end">
+            <!-- Language and Voice buttons with frame -->
+            <div class="border border-gray-400 rounded flex flex-col gap-1 px-1 py-1">
+              <!-- Toggle: Language -->
+              <button 
+                type="button" 
+                (click)="recordingLanguage.set(recordingLanguage() === 'pl-PL' ? 'en-US' : 'pl-PL')"
+                [class.bg-blue-600]="recordingLanguage() === 'pl-PL'"
+                [class.bg-gray-500]="recordingLanguage() === 'en-US'"
+                class="px-3.5 py-1.5 hover:opacity-80 text-white text-base rounded transition-colors font-semibold"
+                [title]="recordingLanguage() === 'pl-PL' ? 'Język: Polski' : 'Language: English'">
+                {{ recordingLanguage() === 'pl-PL' ? 'PL' : 'EN' }}
+              </button>
+              
+              <!-- Voice recording button -->
+              <button 
+                type="button" 
+                (click)="startRecording()"
+                [disabled]="isRecording()"
+                [class.opacity-50]="isRecording()"
+                class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors disabled:cursor-not-allowed"
+                [title]="isRecording() ? 'Nagrywanie...' : 'Dodaj komentarz mówiąc'">
+                🎤
+              </button>
+            </div>
+            
+            <!-- Other toggles with transparent frame -->
+            <div class="border border-transparent rounded px-1 py-1 flex gap-1">
+              <div class="flex flex-col gap-1">
+                <!-- Toggle: Prepend date -->
+                <button 
+                  type="button" 
+                  (click)="prependDate.set(!prependDate())"
+                  [class.bg-blue-600]="prependDate()"
+                  [class.bg-gray-600]="!prependDate()"
+                  class="px-3.5 py-1.5 hover:opacity-80 text-white text-base rounded transition-colors"
+                  [title]="prependDate() ? 'Data będzie dopisana' : 'Data nie będzie dopisana'">
+                  📅
+                </button>
+                
+                <!-- Edit comment button -->
                 <button 
                   type="button" 
                   (click)="openCommentEditor()"
-                  class="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors"
+                  class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
                   title="Edytuj komentarz">
                   ✏️
                 </button>
+              </div>
+              
+              <!-- Append and Delete buttons -->
+              <div class="flex flex-col gap-1">
+                <!-- Toggle: Append comment -->
                 <button 
                   type="button" 
-                  (click)="startRecording()"
-                  [disabled]="isRecording()"
-                  [class.opacity-50]="isRecording()"
-                  class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors disabled:cursor-not-allowed"
-                  [title]="isRecording() ? 'Nagrywanie...' : 'Dodaj komentarz mówiąc'">
-                  🎤
+                  (click)="appendComment.set(!appendComment())"
+                  [class.bg-blue-600]="appendComment()"
+                  [class.bg-gray-600]="!appendComment()"
+                  class="px-3.5 py-1.5 hover:opacity-80 text-white text-2xl leading-none rounded transition-colors font-bold"
+                  [title]="appendComment() ? 'Dopisz na końcu' : 'Nadpisz komentarz'">
+                  +
+                </button>
+                
+                <!-- Delete comment button -->
+                <button 
+                  type="button" 
+                  (click)="openDeleteModal()"
+                  class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                  title="Usuń cały komentarz">
+                  🗑️
                 </button>
               </div>
             </div>
           </div>
         </div>
+        <p class="text-base font-semibold whitespace-pre-wrap">{{ solution.comment || '-' }}</p>
       </section>
 
       <!-- TODO: Edycja rozwiązania - punkty, status, komentarz -->
@@ -180,19 +238,19 @@
             <button 
               type="button" 
               (click)="setQuickPoints(100)"
-              class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors">
+              class="flex-1 px-5 py-3.5 bg-green-600 hover:bg-green-700 text-white text-base rounded transition-colors">
               100%
             </button>
             <button 
               type="button" 
               (click)="setQuickPoints(80)"
-              class="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors">
+              class="flex-1 px-5 py-3.5 bg-yellow-600 hover:bg-yellow-700 text-white text-base rounded transition-colors">
               80%
             </button>
             <button 
               type="button" 
               (click)="setQuickPoints(50)"
-              class="flex-1 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded transition-colors">
+              class="flex-1 px-5 py-3.5 bg-orange-600 hover:bg-orange-700 text-white text-base rounded transition-colors">
               50%
             </button>
           </div>
@@ -202,13 +260,13 @@
             <button 
               type="button" 
               (click)="savePoints()"
-              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition-colors">
+              class="flex-1 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base rounded transition-colors">
               Ustaw
             </button>
             <button 
               type="button" 
               (click)="closePointsEditor()"
-              class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
+              class="flex-1 px-6 py-3.5 bg-gray-600 hover:bg-gray-700 text-white text-base rounded transition-colors">
               Anuluj
             </button>
           </div>
@@ -237,19 +295,27 @@
             @for (status of getAvailableStatuses(); track status) {
               <button
                 type="button"
-                (click)="editedStatus.set(status)"
+                (click)="selectAndSaveStatus(status)"
                 [class.ring-2]="editedStatus() === status"
                 [class.ring-blue-500]="editedStatus() === status"
                 [class.ring-offset-2]="editedStatus() === status"
                 [class.ring-offset-gray-800]="editedStatus() === status"
-                [class.bg-green-900]="status === 'P' && editedStatus() === status"
-                [class.bg-red-900]="status === 'N' && editedStatus() === status"
-                [class.bg-yellow-900]="(status === 'W' || status === 'C') && editedStatus() === status"
-                [class.bg-blue-900]="(status === 'U' || status === 'G') && editedStatus() === status"
-                [class.bg-gray-700]="editedStatus() !== status"
-                class="px-3 py-4 rounded transition-all hover:bg-gray-600 flex flex-col items-center justify-center gap-2">
-                <span class="text-xl font-bold text-white">{{ status || '-' }}</span>
-                <span class="text-xs text-gray-300 text-center leading-tight">{{ getStatusDescription(status).split(' - ')[1] }}</span>
+                [class.bg-gray-500]="!status"
+                [class.bg-green-300]="status === 'G'"
+                [class.bg-green-400]="status === 'W'"
+                [class.bg-green-600]="status === 'U'"
+                [class.bg-green-700]="status === 'P'"
+                [class.bg-red-500]="status === 'N'"
+                [class.bg-yellow-400]="status === 'C'"
+                class="px-3 py-4 rounded transition-all hover:opacity-80 flex flex-col items-center justify-center gap-2">
+                <span class="text-xl font-bold text-black">{{ status || '-' }}</span>
+                <span class="text-xs text-black text-center leading-tight">
+                  @if (!status) {
+                    Not graded / Nie ocenione
+                  } @else {
+                    {{ getStatusDescription(status).split(' - ')[1] }}
+                  }
+                </span>
               </button>
             }
           </div>
@@ -258,13 +324,44 @@
           <div class="flex gap-2 pt-4">
             <button 
               type="button" 
-              (click)="saveStatus()"
-              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition-colors">
-              Ustaw
+              (click)="closeStatusEditor()"
+              class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
+              Zrezygnuj
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Delete Confirmation Modal -->
+  @if (showDeleteModal()) {
+    <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closeDeleteModal()">
+      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96" (click)="$event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg font-bold text-white">Usuń komentarz</h2>
+          <button 
+            type="button" 
+            (click)="closeDeleteModal()"
+            class="text-gray-400 hover:text-white text-2xl font-bold">
+            ×
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <p class="text-base text-gray-300">Czy na pewno chcesz usunąć cały komentarz?</p>
+
+          <!-- Action buttons -->
+          <div class="flex gap-2 pt-2">
+            <button 
+              type="button" 
+              (click)="confirmDeleteComment()"
+              class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded transition-colors">
+              Usuń
             </button>
             <button 
               type="button" 
-              (click)="closeStatusEditor()"
+              (click)="closeDeleteModal()"
               class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
               Anuluj
             </button>

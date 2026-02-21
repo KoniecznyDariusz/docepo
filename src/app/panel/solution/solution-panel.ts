@@ -36,6 +36,10 @@ export class SolutionPanel implements OnInit {
   editedPoints = signal<number>(0);
   showStatusModal = signal(false);
   editedStatus = signal<string>('');
+  prependDate = signal<boolean>(true);
+  appendComment = signal<boolean>(true);
+  recordingLanguage = signal<'pl-PL' | 'en-US'>('pl-PL');
+  showDeleteModal = signal(false);
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -96,7 +100,23 @@ export class SolutionPanel implements OnInit {
   }
 
   openCommentEditor(): void {
-    this.commentText.set(this.solution?.comment || '');
+    let initialText = this.solution?.comment || '';
+    
+    // If date prepending is enabled, add a new line with date prefix
+    if (this.prependDate()) {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const datePrefix = `(${month}-${day}) `;
+      
+      if (initialText) {
+        initialText = initialText + '\n' + datePrefix;
+      } else {
+        initialText = datePrefix;
+      }
+    }
+    
+    this.commentText.set(initialText);
     this.isEditingComment.set(true);
   }
 
@@ -106,7 +126,11 @@ export class SolutionPanel implements OnInit {
 
   saveComment(): void {
     if (this.solution) {
-      this.solution.comment = this.commentText();
+      let finalText = this.commentText();
+      
+      // Note: Date prepending and appending logic is already handled in appendCommentText
+      // For manual edits via modal, we just save as-is
+      this.solution.comment = finalText;
       this.updateSolution();
     }
     this.closeCommentEditor();
@@ -120,10 +144,24 @@ export class SolutionPanel implements OnInit {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    // Replace the comment with the latest transcript.
-    this.commentText.set(trimmed);
+    let finalText = trimmed;
+    
+    // Prepend date if enabled
+    if (this.prependDate()) {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      finalText = `(${month}-${day}) ${trimmed}`;
+    }
+
+    // Append or replace
+    if (this.appendComment() && this.solution?.comment) {
+      finalText = this.solution.comment + '\n' + finalText;
+    }
+
+    this.commentText.set(finalText);
     if (this.solution) {
-      this.solution.comment = trimmed;
+      this.solution.comment = finalText;
     }
   }
 
@@ -152,11 +190,11 @@ export class SolutionPanel implements OnInit {
         });
 
         const result = await SpeechRecognition.start({
-          language: 'pl-PL',
+          language: this.recordingLanguage(),
           maxResults: 5,
           partialResults: true,
           popup: true,
-          prompt: 'Mow teraz...'
+          prompt: this.recordingLanguage() === 'pl-PL' ? 'Mów teraz...' : 'Speak now...'
         });
 
         await partialListener.remove();
@@ -188,7 +226,7 @@ export class SolutionPanel implements OnInit {
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = 'pl-PL';
+      recognition.lang = this.recordingLanguage();
       recognition.continuous = true; // Pozwól na dłuższe między na słowami
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
@@ -319,8 +357,34 @@ export class SolutionPanel implements OnInit {
     }
   }
 
+  selectAndSaveStatus(status: string): void {
+    this.editedStatus.set(status);
+    if (this.solution) {
+      this.solution.status = status as any;
+      // TODO: Wywołanie serwisu do zapisania statusu na serwerze
+      this.closeStatusEditor();
+    }
+  }
+
   getAvailableStatuses(): string[] {
     return ['', 'C', 'G', 'W', 'U', 'P', 'N'];
+  }
+
+  openDeleteModal(): void {
+    this.showDeleteModal.set(true);
+  }
+
+  closeDeleteModal(): void {
+    this.showDeleteModal.set(false);
+  }
+
+  confirmDeleteComment(): void {
+    if (this.solution) {
+      this.solution.comment = '';
+      this.commentText.set('');
+      // TODO: Wywołanie serwisu do zapisania pustego komentarza na serwerze
+    }
+    this.closeDeleteModal();
   }
 
   updateSolution(): void {
