@@ -1,7 +1,7 @@
 <div class="wheel-wrapper">
   <div #wheel class="wheel-container" (scroll)="onScroll()">
     @for (points of options; track points) {
-      <div class="wheel-item" [class.active]="points === value">{{ points }}</div>
+      <div class="wheel-item" [class.active]="points === value()">{{ points }}</div>
     }
   </div>
   <div class="wheel-highlight"></div>

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Student } from 'app/model/student.model';
 import { Course } from 'app/model/course.model';
@@ -13,12 +13,12 @@ import { Task } from 'app/model/task.model';
   styleUrls: ['./info-task.component.css']
 })
 export class InfoTaskComponent {
-  @Input() show: boolean = false;
-  @Input() student?: Student;
-  @Input() course?: Course;
-  @Input() group?: Group;
-  @Input() task?: Task;
-  @Output() close = new EventEmitter<void>();
+  show = input(false);
+  student = input<Student | undefined>(undefined);
+  course = input<Course | undefined>(undefined);
+  group = input<Group | undefined>(undefined);
+  task = input<Task | undefined>(undefined);
+  close = output<void>();
 
   onClose(): void {
     this.close.emit();
