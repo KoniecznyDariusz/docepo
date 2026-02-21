@@ -4,21 +4,28 @@
   }
 
   @for (group of groups(); track group.id) {
-    <a [routerLink]="['/attendance', group.classDates?.[0]?.id]"
-       class="group-item"
-       [ngClass]="{ 'highlighted': isGroupActive(group) }">
+    @if (getGroupClassDate(group.id); as classDate) {
+      <a [routerLink]="['/attendance', classDate.id]"
+         class="group-item"
+         [ngClass]="{ 'highlighted': isGroupActive(group) }">
 
-      <div class="group-details">
-        <h2 class="group-name">{{ group.name }}</h2>
-      </div>
-      <div class="group-time">
-        @if (getGroupClassDate(group.id); as classDate) {
+        <div class="group-details">
+          <h2 class="group-name">{{ group.name }}</h2>
+        </div>
+        <div class="group-time">
           <span>Termin: {{ classDate.startTime | date:'yyyy-MM-dd HH:mm' }} - {{ classDate.endTime | date:'HH:mm' }}</span>
           <p class="text-sm text-gray-400">{{ classDate.description }}</p>
-        } @else {
+        </div>
+      </a>
+    } @else {
+      <div class="group-item opacity-70">
+        <div class="group-details">
+          <h2 class="group-name">{{ group.name }}</h2>
+        </div>
+        <div class="group-time">
           <span class="text-gray-500">Brak przyszłych zajęć</span>
-        }
+        </div>
       </div>
-    </a>
+    }
   }
 </main>

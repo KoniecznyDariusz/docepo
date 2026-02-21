@@ -4,7 +4,7 @@
   </header>
 
   <main class="flex-1 overflow-auto p-4 space-y-4">
-    <app-student-attendances [studentId]="student?.id" [groupId]="group?.id"></app-student-attendances>
+    <app-student-attendances [studentId]="student?.id" [groupId]="group?.id" [currentClassDateId]="classDateId"></app-student-attendances>
     <app-student-tasklists [studentId]="student?.id" [courseId]="course?.id" [groupId]="groupId" [classDateId]="classDateId"></app-student-tasklists>
   </main>
 

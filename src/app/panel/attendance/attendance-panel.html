@@ -25,7 +25,7 @@
 
   <!-- Lista studentów (zajmuje pozostałą przestrzeń) -->
   <main class="flex-1 overflow-hidden relative main-content">
-    <app-student-list [groupId]="group?.id"></app-student-list>
+    <app-student-list [groupId]="group?.id" [classDateId]="currentClassDate?.id" [selectedStudentId]="selectedStudentId"></app-student-list>
   </main>
 
   <app-footer [backUrl]="'/groups/' + course?.id"></app-footer>

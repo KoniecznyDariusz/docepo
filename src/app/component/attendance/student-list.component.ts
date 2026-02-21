@@ -1,6 +1,6 @@
 import { Component, inject, ViewChild, ElementRef, signal, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { StudentRowComponent } from './student-row.component';
 import { MoodleService } from 'app/service/moodle.service';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
@@ -37,24 +37,14 @@ export class StudentListComponent {
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
   private eportalService = inject(MoodleService);
   private router = inject(Router);
-  private route = inject(ActivatedRoute);
 
   groupId = input<string | undefined>();
+  classDateId = input<string | undefined>();
+  selectedStudentId = input<string | null>(null);
   // Signals (Angular 21)
   students = signal<any[]>([]);
-  selectedStudentId = signal<string | null>(null);
-  classDateId = signal<string | null>(null);
 
   constructor() {
-    // Watch query params for 'selected' student ID
-    this.route.queryParamMap.subscribe(q => {
-      this.selectedStudentId.set(q.get('selected'));
-    });
-
-    this.route.paramMap.subscribe(p => {
-      this.classDateId.set(p.get('classDateId'));
-    });
-
     // Watch groupId input changes
     effect(() => {
       const gid = this.groupId();

@@ -16,6 +16,7 @@ export class StudentAttendancesComponent {
   readonly attendanceSettings = AttendanceSettings;
   studentId = input<string | undefined>();
   groupId = input<string | undefined>();
+  currentClassDateId = input<string | undefined>();
 
   private moodle = inject(MoodleService);
   attendances = signal<Attendance[]>([]);
@@ -65,7 +66,7 @@ export class StudentAttendancesComponent {
   }
 
   isCurrentClassDate(classDateId: string): boolean {
-    return this.moodle.isCurrentClassDate(classDateId);
+    return this.currentClassDateId() === classDateId;
   }
 
   openAttendanceDetail(attendance: Attendance) {
