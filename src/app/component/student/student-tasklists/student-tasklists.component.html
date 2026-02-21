@@ -14,7 +14,7 @@
             <!-- Bottom filled portion (colored based on points percentage) -->
             <div 
               class="absolute bottom-0 left-0 right-0 transition-all duration-300"
-              [ngStyle]="{ 'height.%': getPointsPercentage(solution), 'backgroundColor': getSolutionFillColor(solution.points, getTask(solution.taskId)?.maxPoints || 0) }">
+              [ngStyle]="{ 'height.%': getPointsPercentage(solution), 'backgroundColor': solutionSettings.getSolutionFillColor(solution.points, getTask(solution.taskId)?.maxPoints || 0) }">
             </div>
 
             <!-- Content overlay (always on top) -->
@@ -25,8 +25,8 @@
 
             <!-- Status badge in top-right corner -->
             <div class="absolute top-1 right-1 z-20 w-5 h-5 rounded-full flex items-center justify-center border-2 border-black"
-              [ngClass]="getStatusBadgeColor(solution.status)">
-              <span class="text-black text-xs font-bold">{{ getStatusLabel(solution.status) }}</span>
+              [ngClass]="solutionSettings.getStatusBadgeColor(solution.status)">
+              <span class="text-black text-xs font-bold">{{ solutionSettings.getStatusLabel(solution.status) }}</span>
             </div>
           </button>
         }

@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { MoodleService } from 'app/service/moodle.service';
@@ -11,6 +11,7 @@ import { Student } from 'app/model/student.model';
 import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
 import { BackNavigationService } from 'app/service/back-navigation.service';
+import { SolutionSettings } from 'app/setting/solution.settings';
 import { FooterComponent } from 'app/component/common/footer/footer.component';
 import { InfoTaskComponent } from 'app/component/common/info/info-task/info-task.component';
 import { PointsWheelComponent } from 'app/component/common/points-wheel/points-wheel.component';
@@ -23,6 +24,7 @@ import { PointsWheelComponent } from 'app/component/common/points-wheel/points-w
   styleUrls: ['./solution-panel.css']
 })
 export class SolutionPanel implements OnInit {
+  readonly solutionSettings = SolutionSettings;
   solution: Solution | undefined;
   task: Task | undefined;
   student: Student | undefined;
@@ -42,7 +44,6 @@ export class SolutionPanel implements OnInit {
   showDeleteModal = signal(false);
 
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
   private moodle = inject(MoodleService);
   private backNav = inject(BackNavigationService);
 
@@ -287,31 +288,6 @@ export class SolutionPanel implements OnInit {
     });
   }
 
-  getSolutionFillColor(points: number, maxPoints: number): string {
-    if (maxPoints <= 0) return 'rgb(71, 85, 105)'; // slate-600
-    const percentage = (points / maxPoints) * 100;
-
-    if (percentage === 100) return 'rgb(34, 197, 94)';     // green-500
-    if (percentage > 80) return 'rgb(134, 239, 172)';      // light green-400
-    if (percentage === 80) return 'rgb(249, 115, 22)';     // orange-500
-    if (percentage > 50) return 'rgb(254, 215, 170)';      // light orange-300
-    if (percentage === 50) return 'rgb(234, 179, 8)';      // yellow-500
-    return 'rgb(239, 68, 68)';                              // red-500
-  }
-
-  getStatusDescription(status: string): string {
-    const descriptions: Record<string, string> = {
-      '': '- Not graded / Nie ocenione',
-      'C': 'C - Comment / Komentarz (coś trzeba poprawić)',
-      'G': 'G - Graded / Ocenione - czekam na plik',
-      'W': 'W - Warning / Ostrzeżenie o braku pliku',
-      'U': 'U - Uploaded / Plik przesłany do ePortalu',
-      'P': 'P - Positive / Pozytywnie zakończone',
-      'N': 'N - Negative / Nie rozwiązane'
-    };
-    return descriptions[status] || descriptions[''];
-  }
-
   openPointsEditor(): void {
     if (this.solution) {
       this.editedPoints.set(this.solution.points);
@@ -364,10 +340,6 @@ export class SolutionPanel implements OnInit {
       // TODO: Wywołanie serwisu do zapisania statusu na serwerze
       this.closeStatusEditor();
     }
-  }
-
-  getAvailableStatuses(): string[] {
-    return ['', 'C', 'G', 'W', 'U', 'P', 'N'];
   }
 
   openDeleteModal(): void {

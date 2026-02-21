@@ -12,14 +12,14 @@
             [class.ring-offset-2]="isCurrentClassDate(a.classDateId)"
             [class.ring-offset-gray-800]="isCurrentClassDate(a.classDateId)"
             class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all cursor-pointer hover:scale-110"
-            [class.bg-green-600]="a.status==='P'"
-            [class.text-white]="a.status==='P'"
-            [class.bg-red-600]="a.status==='A'"
-            [class.text-white]="a.status==='A'"
-            [class.bg-amber-600]="a.status==='L'"
-            [class.text-white]="a.status==='L'"
-            [class.bg-slate-700]="!a.status"
-            [class.text-slate-400]="!a.status"
+            [class.bg-green-600]="attendanceSettings.isPresent(a.status)"
+            [class.text-white]="attendanceSettings.isPresent(a.status)"
+            [class.bg-red-600]="attendanceSettings.isAbsent(a.status)"
+            [class.text-white]="attendanceSettings.isAbsent(a.status)"
+            [class.bg-amber-600]="attendanceSettings.isLate(a.status)"
+            [class.text-white]="attendanceSettings.isLate(a.status)"
+            [class.bg-slate-700]="attendanceSettings.isMissing(a.status)"
+            [class.text-slate-400]="attendanceSettings.isMissing(a.status)"
             [attr.aria-label]="getClassDateDesc(a.classDateId)">
             {{ a.status || '-' }}
           </button>
@@ -54,8 +54,8 @@
 
         <div>
           <p class="text-sm text-gray-400">Status obecności</p>
-          <p class="text-base font-semibold" [class.text-green-400]="getAttendanceInfo()?.status==='P'" [class.text-red-400]="getAttendanceInfo()?.status==='A'" [class.text-amber-400]="getAttendanceInfo()?.status==='L'">
-            {{ getStatusLabel(getAttendanceInfo()?.status || null) }}
+          <p class="text-base font-semibold" [class.text-green-400]="attendanceSettings.isPresent(getAttendanceInfo()?.status)" [class.text-red-400]="attendanceSettings.isAbsent(getAttendanceInfo()?.status)" [class.text-amber-400]="attendanceSettings.isLate(getAttendanceInfo()?.status)">
+            {{ attendanceSettings.getStatusLabel(getAttendanceInfo()?.status || null) }}
           </p>
         </div>
       </div>

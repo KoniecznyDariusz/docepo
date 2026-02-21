@@ -2,6 +2,8 @@ import { Component, input, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MoodleService } from 'app/service/moodle.service';
 import { Attendance } from 'app/model/attendance.model';
+import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
+import { AttendanceSettings } from 'app/setting/attendance.settings';
 
 @Component({
   selector: 'app-student-attendances',
@@ -11,6 +13,7 @@ import { Attendance } from 'app/model/attendance.model';
   styleUrls: ['./student-attendances.component.css']
 })
 export class StudentAttendancesComponent {
+  readonly attendanceSettings = AttendanceSettings;
   studentId = input<string | undefined>();
   groupId = input<string | undefined>();
 
@@ -75,16 +78,7 @@ export class StudentAttendancesComponent {
     this.selectedAttendance.set(null);
   }
 
-  getStatusLabel(status: string | null): string {
-    const labels: Record<string, string> = {
-      'P': 'Obecny',
-      'A': 'Nieobecny',
-      'L': 'Spóźniony'
-    };
-    return status ? labels[status] || status : 'Brak danych';
-  }
-
-  getAttendanceInfo(): {date: string; description: string; status: string | null} | null {
+  getAttendanceInfo(): {date: string; description: string; status: AttendanceStatus} | null {
     const att = this.selectedAttendance();
     if (!att) return null;
     const dateInfo = this.classDatesMap()[att.classDateId];

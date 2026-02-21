@@ -32,7 +32,7 @@
                 class="h-2.5 rounded-full transition-all duration-300"
                 [ngStyle]="{ 
                   'width.%': (solution.points / task.maxPoints) * 100,
-                  'backgroundColor': getSolutionFillColor(solution.points, task.maxPoints)
+                  'backgroundColor': solutionSettings.getSolutionFillColor(solution.points, task.maxPoints)
                 }">
               </div>
             </div>
@@ -49,7 +49,7 @@
                 [class.text-green-700]="solution.status === 'P'"
                 [class.text-red-500]="solution.status === 'N'"
                 [class.text-yellow-400]="solution.status === 'C'">
-                {{ getStatusDescription(solution.status || '') }}
+                {{ solutionSettings.getStatusDescription(solution.status || '') }}
               </p>
               <button 
                 type="button" 
@@ -292,7 +292,7 @@
         <div class="space-y-4">
           <!-- Status tiles (3 per row) -->
           <div class="grid grid-cols-3 gap-3">
-            @for (status of getAvailableStatuses(); track status) {
+            @for (status of solutionSettings.getAvailableStatuses(); track status) {
               <button
                 type="button"
                 (click)="selectAndSaveStatus(status)"
@@ -313,7 +313,7 @@
                   @if (!status) {
                     Not graded / Nie ocenione
                   } @else {
-                    {{ getStatusDescription(status).split(' - ')[1] }}
+                    {{ solutionSettings.getStatusDescription(status).split(' - ')[1] }}
                   }
                 </span>
               </button>

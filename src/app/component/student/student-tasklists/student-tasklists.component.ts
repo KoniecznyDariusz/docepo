@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Solution } from 'app/model/solution.model';
 import { Task } from 'app/model/task.model';
+import { SolutionSettings } from 'app/setting/solution.settings';
 
 @Component({
   selector: 'app-student-tasklists',
@@ -13,6 +14,7 @@ import { Task } from 'app/model/task.model';
   styleUrls: ['./student-tasklists.component.css']
 })
 export class StudentTasklistsComponent {
+  readonly solutionSettings = SolutionSettings;
   studentId = input<string | undefined>();
   courseId = input<string | undefined>();
   groupId = input<string | undefined>();
@@ -54,50 +56,6 @@ export class StudentTasklistsComponent {
     const task = this.getTask(solution.taskId);
     if (!task || task.maxPoints === 0) return 0;
     return Math.min(100, (solution.points / task.maxPoints) * 100);
-  }
-
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      '': '-',
-      'C': 'C',
-      'G': 'G',
-      'W': 'W',
-      'U': 'U',
-      'P': 'P',
-      'N': 'N'
-    };
-    return labels[status] || '?';
-  }
-
-  getSolutionFillColor(points: number, maxPoints: number): string {
-    if (maxPoints <= 0) return 'rgb(71, 85, 105)'; // slate-600
-    const percentage = (points / maxPoints) * 100;
-
-    if (percentage === 100) return 'rgb(34, 197, 94)';     // green-500
-    if (percentage > 80) return 'rgb(134, 239, 172)';      // light green-400
-    if (percentage === 80) return 'rgb(249, 115, 22)';     // orange-500
-    if (percentage > 50) return 'rgb(254, 215, 170)';      // light orange-300
-    if (percentage === 50) return 'rgb(234, 179, 8)';      // yellow-500
-    return 'rgb(239, 68, 68)';                              // red-500
-  }
-
-  getStatusBadgeColor(status: string): string {
-    switch (status) {
-      case 'G':
-        return 'bg-green-300';
-      case 'W':
-        return 'bg-green-400';
-      case 'U':
-        return 'bg-green-600';
-      case 'P':
-        return 'bg-green-700';
-      case 'N':
-        return 'bg-red-500';
-      case 'C':
-        return 'bg-yellow-400';
-      default:
-        return 'bg-gray-500';
-    }
   }
 
   openSolutionDetail(solution: Solution): void {
