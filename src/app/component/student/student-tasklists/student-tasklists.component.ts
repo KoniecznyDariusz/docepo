@@ -69,17 +69,16 @@ export class StudentTasklistsComponent {
     return labels[status] || '?';
   }
 
-  getSolutionFillColor(status: string): string {
-    const colors: Record<string, string> = {
-      '': 'rgb(71, 85, 105)',  // slate-600 - dla nie ocenionych
-      'C': 'rgb(234, 179, 8)',  // yellow-500 - komentarz
-      'G': 'rgb(59, 130, 246)', // blue-500 - graded
-      'W': 'rgb(234, 179, 8)',  // yellow-500 - warning
-      'U': 'rgb(59, 130, 246)', // blue-500 - uploaded
-      'P': 'rgb(34, 197, 94)',  // green-500 - positive
-      'N': 'rgb(239, 68, 68)'   // red-500 - negative
-    };
-    return colors[status] || colors[''];
+  getSolutionFillColor(points: number, maxPoints: number): string {
+    if (maxPoints <= 0) return 'rgb(71, 85, 105)'; // slate-600
+    const percentage = (points / maxPoints) * 100;
+
+    if (percentage === 100) return 'rgb(34, 197, 94)';     // green-500
+    if (percentage > 80) return 'rgb(134, 239, 172)';      // light green-400
+    if (percentage === 80) return 'rgb(249, 115, 22)';     // orange-500
+    if (percentage > 50) return 'rgb(254, 215, 170)';      // light orange-300
+    if (percentage === 50) return 'rgb(234, 179, 8)';      // yellow-500
+    return 'rgb(239, 68, 68)';                              // red-500
   }
 
   openSolutionDetail(solution: Solution): void {

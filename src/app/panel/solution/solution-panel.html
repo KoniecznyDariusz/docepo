@@ -34,7 +34,7 @@
                 class="h-2.5 rounded-full transition-all duration-300"
                 [ngStyle]="{ 
                   'width.%': (solution.points / task.maxPoints) * 100,
-                  'backgroundColor': getSolutionFillColor(solution.status)
+                  'backgroundColor': getSolutionFillColor(solution.points, task.maxPoints)
                 }">
               </div>
             </div>
@@ -42,13 +42,22 @@
 
           <div>
             <p class="text-sm text-gray-400">Stan</p>
-            <p class="text-base font-semibold" 
-              [class.text-green-400]="solution.status === 'P'"
-              [class.text-red-400]="solution.status === 'N'"
-              [class.text-yellow-400]="solution.status === 'W' || solution.status === 'C'"
-              [class.text-blue-400]="solution.status === 'U' || solution.status === 'G'">
-              {{ solution.status || '-' }}
-            </p>
+            <div class="flex items-center justify-between">
+              <p class="text-base font-semibold" 
+                [class.text-green-400]="solution.status === 'P'"
+                [class.text-red-400]="solution.status === 'N'"
+                [class.text-yellow-400]="solution.status === 'W' || solution.status === 'C'"
+                [class.text-blue-400]="solution.status === 'U' || solution.status === 'G'">
+                {{ getStatusDescription(solution.status || '') }}
+              </p>
+              <button 
+                type="button" 
+                (click)="openStatusEditor()"
+                class="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors"
+                title="Edytuj stan">
+                ✏️
+              </button>
+            </div>
           </div>
 
           <div>
@@ -127,8 +136,8 @@
   <!-- Points Editor Modal -->
   @if (showPointsModal()) {
     <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closePointsEditor()">
-      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96" (click)="$event.stopPropagation()">
-        <div class="flex justify-between items-center mb-4">
+      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-[500px]" (click)="$event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
           <h2 class="text-lg font-bold text-white">Edytuj punkty</h2>
           <button 
             type="button" 
@@ -138,27 +147,32 @@
           </button>
         </div>
 
-        <div class="space-y-4">
-          <!-- Current points display -->
-          <div class="text-center">
-            <p class="text-sm text-gray-400">Punkty</p>
-            <p class="text-3xl font-bold text-white">
-              {{ editedPoints() }} / {{ task?.maxPoints }}
-            </p>
-            <p class="text-sm text-gray-400 mt-1">
-              {{ (task?.maxPoints ?? 1) > 0 ? ((editedPoints() / (task?.maxPoints ?? 1)) * 100).toFixed(0) : 0 }}%
-            </p>
-          </div>
+        <div class="space-y-6">
+          <!-- Layout: Info na lewo, Bęben na prawo -->
+          <div class="flex gap-6 items-start">
+            <!-- Current points display (left) -->
+            <div class="flex-1 flex flex-col items-center justify-center">
+              <p class="text-xs text-gray-400 uppercase tracking-wide">Punkty</p>
+              <p class="text-5xl font-bold text-white mt-2">
+                {{ editedPoints() }}
+              </p>
+              <p class="text-lg text-gray-400 mt-2">
+                / {{ task?.maxPoints }}
+              </p>
+              <p class="text-sm text-blue-400 font-semibold mt-3">
+                {{ (task?.maxPoints ?? 1) > 0 ? ((editedPoints() / (task?.maxPoints ?? 1)) * 100).toFixed(0) : 0 }}%
+              </p>
+            </div>
 
-          <!-- Range slider -->
-          <div>
-            <input 
-              type="range" 
-              [min]="0" 
-              [max]="task?.maxPoints || 100"
-              [value]="editedPoints()"
-              (input)="editedPoints.set(+$any($event.target).value)"
-              class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            <!-- Wheel selector (right) -->
+            <div class="flex-1">
+              <app-points-wheel
+                [value]="editedPoints()"
+                [min]="0"
+                [max]="task?.maxPoints || 0"
+                (valueChange)="editedPoints.set($event)">
+              </app-points-wheel>
+            </div>
           </div>
 
           <!-- Quick selection buttons -->
@@ -194,6 +208,63 @@
             <button 
               type="button" 
               (click)="closePointsEditor()"
+              class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
+              Anuluj
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Status Editor Modal -->
+  @if (showStatusModal()) {
+    <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closeStatusEditor()">
+      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96" (click)="$event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg font-bold text-white">Edytuj stan</h2>
+          <button 
+            type="button" 
+            (click)="closeStatusEditor()"
+            class="text-gray-400 hover:text-white text-2xl font-bold">
+            ×
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Status tiles (3 per row) -->
+          <div class="grid grid-cols-3 gap-3">
+            @for (status of getAvailableStatuses(); track status) {
+              <button
+                type="button"
+                (click)="editedStatus.set(status)"
+                [class.ring-2]="editedStatus() === status"
+                [class.ring-blue-500]="editedStatus() === status"
+                [class.ring-offset-2]="editedStatus() === status"
+                [class.ring-offset-gray-800]="editedStatus() === status"
+                [class.bg-green-900]="status === 'P' && editedStatus() === status"
+                [class.bg-red-900]="status === 'N' && editedStatus() === status"
+                [class.bg-yellow-900]="(status === 'W' || status === 'C') && editedStatus() === status"
+                [class.bg-blue-900]="(status === 'U' || status === 'G') && editedStatus() === status"
+                [class.bg-gray-700]="editedStatus() !== status"
+                class="px-3 py-4 rounded transition-all hover:bg-gray-600 flex flex-col items-center justify-center gap-2">
+                <span class="text-xl font-bold text-white">{{ status || '-' }}</span>
+                <span class="text-xs text-gray-300 text-center leading-tight">{{ getStatusDescription(status).split(' - ')[1] }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex gap-2 pt-4">
+            <button 
+              type="button" 
+              (click)="saveStatus()"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition-colors">
+              Ustaw
+            </button>
+            <button 
+              type="button" 
+              (click)="closeStatusEditor()"
               class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
               Anuluj
             </button>
