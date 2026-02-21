@@ -202,3 +202,49 @@ Zasady:
 	- migracje do `input()/output()` i sygnałów w komponentach common,
 	- usunięcie legacy template patterns (`*ngIf/*ngFor/*ngSwitch`, `[ngClass]`, `[ngStyle]`) w aktualnym `src/`.
 
+### 17) Integracja z Moodle – uprawnienia i zakres dla admina
+Ta sekcja to gotowa lista do przekazania administratorowi Moodle przy uruchamianiu integracji produkcyjnej.
+
+#### 17.1 Konfiguracja platformy
+- Włączyć Web Services (`Enable web services`) i REST.
+- Utworzyć dedykowane konto techniczne (service account) lub przypisać odpowiednią rolę nauczyciela.
+- Wygenerować token Web Service dla aplikacji Docepo.
+- Ograniczyć uprawnienia zgodnie z zasadą least privilege (tylko potrzebne kursy i operacje).
+
+#### 17.2 Funkcje Web Service (minimum)
+- `core_webservice_get_site_info` (weryfikacja tokena i kontekstu użytkownika).
+- `core_enrol_get_users_courses` (kursy użytkownika; alternatywnie `core_course_get_courses`).
+- `core_group_get_course_groups` (grupy kursowe).
+- `core_enrol_get_enrolled_users` (uczestnicy kursu, w tym studenci).
+- `mod_assign_get_assignments` (lista zadań).
+- `mod_assign_get_submissions` (rozwiązania/oddania studentów).
+- `mod_assign_save_grade` (zapis oceny/feedbacku – jeśli oceny mają być ustawiane z Docepo).
+
+#### 17.3 Obecności (plugin Attendance)
+Jeśli uczelnia używa modułu Attendance, dodać również funkcje pluginu (nazwy mogą się różnić zależnie od wersji):
+- `mod_attendance_get_attendances`.
+- `mod_attendance_get_sessions`.
+- `mod_attendance_get_session`.
+- `mod_attendance_update_user_status` (lub odpowiednik bulk update).
+
+#### 17.4 Capabilities (rola)
+Potwierdzić/ustawić uprawnienia roli dla konta integracyjnego:
+- `moodle/course:view`.
+- `moodle/user:viewdetails`.
+- `moodle/site:viewparticipants`.
+- `mod/assign:view`.
+- `mod/assign:grade` (jeśli zapis ocen z aplikacji).
+- Dostęp do grup w kursie (w razie potrzeby także `moodle/site:accessallgroups`, zależnie od polityki grup).
+- Dla Attendance: `mod/attendance:view`, `mod/attendance:takeattendances` (opcjonalnie także `mod/attendance:changeattendances`, zależnie od konfiguracji).
+
+#### 17.5 Zakres danych dla Docepo
+- Odczyt: kursy, grupy, terminy zajęć, studenci, zadania, oddania.
+- Zapis: status obecności (dla bieżących zajęć) oraz opcjonalnie oceny/feedback do zadań.
+
+#### 17.6 Checklista wdrożeniowa
+1) Potwierdzić wersję Moodle i wersję pluginu Attendance.
+2) Utworzyć custom service dla Docepo i przypisać funkcje z pkt 17.2/17.3.
+3) Przypisać konto integracyjne do właściwych kursów/roli.
+4) Wygenerować token i przekazać bezpiecznym kanałem.
+5) Wykonać testy end-to-end: kursy → grupy → obecności (odczyt/zapis) → zadania/rozwiązania.
+
