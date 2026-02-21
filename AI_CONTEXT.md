@@ -18,10 +18,10 @@ Założenia domenowe:
 ### 3) Definicja „bieżących zajęć”
 „Bieżące zajęcia” to termin zajęć dla danej grupy (w ramach kursu zalogowanego użytkownika),
 którego czas przypada w oknie:
-`start zajęć - 15 minut <= teraz <= end zajęć + 15 minut`.
+`start zajęć - 5 minut <= teraz <= end zajęć + 15 minut`.
 
-Czyli system bazuje na danych Moodle (`start`, `end`) i rozszerza okno aktywności o 15 minut
-z każdej strony (wcześniejsze sprawdzenie lub opóźnione zakończenie zajęć).
+Czyli system bazuje na danych Moodle (`start`, `end`) i rozszerza okno aktywności o 5 minut
+przed startem oraz 15 minut po zakończeniu zajęć.
 
 ### 4) Obecności – zakres funkcjonalny
 - Możliwa jest wyłącznie modyfikacja stanu obecności studenta.
@@ -176,9 +176,29 @@ Zasady:
 - Dane trwałe zapisuj przez `StorageService` (opakowanie na `@capacitor/preferences`).
 
 ### 15) Stan ustaleń (zgodny z aktualnym kodem)
-- Bieżące zajęcia: obowiązuje okno `start zajęć - 15 minut <= teraz <= end zajęć + 15 minut`.
+- Bieżące zajęcia: obowiązuje okno `start zajęć - 5 minut <= teraz <= end zajęć + 15 minut`.
 - Status nieocenione w `Solution.status`: obecnie pusty string `''` (w UI może być pokazywany jako `-`).
 - Routing: obowiązuje URL-first (parametry ścieżki + parametry query), bez logiki opartej o historię.
 - Trasy legacy `/panel/...`: działają jako przekierowania kompatybilności do gałęzi kanonicznej.
-- Aktualizacja obecności: wymaga `classDateId` i zapis jest dozwolony tylko dla bieżących zajęć (okno ±15 minut).
+- Aktualizacja obecności: wymaga `classDateId` i zapis jest dozwolony tylko dla bieżących zajęć (okno -5/+15 minut).
+
+### 16) Ostatnie zmiany (log sesji AI)
+- Refaktoryzacja logiki statusów do `setting/`:
+	- `src/app/setting/solution.settings.ts` (statusy, etykiety, kolory, opisy, dostępne statusy).
+	- `src/app/setting/attendance.settings.ts` (etykiety i predykaty statusów obecności).
+- Ujednolicenie routingu i kontekstu:
+	- usunięte duplikaty tras panelowych,
+	- przepływ `classDateId` przez URL/query w ścieżce attendance → student → solution → back.
+- Poprawki logiki obecności:
+	- zapis/odczyt obecności przypięty do właściwego `classDateId`,
+	- blokada modyfikacji dla terminów niebieżących,
+	- sortowanie historii obecności studenta po `startTime` terminu.
+- Logika bieżących zajęć:
+	- `MoodleService` używa bufora `-5 min` przed startem i `+15 min` po końcu.
+- Moodle selection / storage:
+	- preload ostatniego `moodleUrl`,
+	- lista endpointów nazwa+URL z domyślnym wpisem `ePortal - PWr`.
+- Modern Angular:
+	- migracje do `input()/output()` i sygnałów w komponentach common,
+	- usunięcie legacy template patterns (`*ngIf/*ngFor/*ngSwitch`, `[ngClass]`, `[ngStyle]`) w aktualnym `src/`.
 

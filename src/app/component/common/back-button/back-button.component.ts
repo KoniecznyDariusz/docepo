@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { BackNavigationService } from 'app/service/back-navigation.service';
@@ -11,14 +11,14 @@ import { BackNavigationService } from 'app/service/back-navigation.service';
   styleUrls: ['./back-button.component.css']
 })
 export class BackButtonComponent {
-  @Input() backUrl?: string;
+  backUrl = input<string | undefined>(undefined);
 
   private router = inject(Router);
   private backNav = inject(BackNavigationService);
 
   onClick(): void {
-    if (this.backUrl) {
-      this.router.navigateByUrl(this.backUrl);
+    if (this.backUrl()) {
+      this.router.navigateByUrl(this.backUrl()!);
     } else {
       this.backNav.goBack();
     }

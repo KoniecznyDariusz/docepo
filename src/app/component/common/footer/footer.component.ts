@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BackButtonComponent } from '../back-button/back-button.component';
 
@@ -10,9 +10,9 @@ import { BackButtonComponent } from '../back-button/back-button.component';
   styleUrls: ['./footer.component.css']
 })
 export class FooterComponent {
-  @Input() showInfoButton: boolean = false;
-  @Input() backUrl?: string;
-  @Output() infoClick = new EventEmitter<void>();
+  showInfoButton = input(false);
+  backUrl = input<string | undefined>(undefined);
+  infoClick = output<void>();
 
   onInfoClick(): void {
     this.infoClick.emit();
