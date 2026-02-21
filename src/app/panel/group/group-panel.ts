@@ -18,6 +18,7 @@ import { FooterComponent } from 'app/component/common/footer/footer.component';
 export class GroupPanel implements OnInit, OnDestroy {
   groups: Group[] = [];
   groupClassDates: { [id: string]: ClassDate | null } = {};
+  groupAttendanceEnabled: { [id: string]: boolean } = {};
   courseId!: string;
   courseName: string | undefined;
 
@@ -50,6 +51,7 @@ export class GroupPanel implements OnInit, OnDestroy {
     this.groups.forEach(g => {
       this.eportalService.getCurrentOrNextClassDate(g.id).subscribe(cd => {
         this.groupClassDates[g.id] = cd;
+        this.groupAttendanceEnabled[g.id] = !!cd && this.eportalService.isCurrentClassDate(cd.id);
       });
     });
   }

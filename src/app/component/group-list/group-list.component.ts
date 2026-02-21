@@ -14,20 +14,13 @@ import { ClassDate } from 'app/model/classDate.model';
 export class GroupListComponent {
   groups = input<Group[]>([]);
   groupClassDates = input<Record<string, ClassDate | null>>({});
+  groupAttendanceEnabled = input<Record<string, boolean>>({});
 
   getGroupClassDate(groupId: string): ClassDate | null {
     return this.groupClassDates()?.[groupId] || null;
   }
 
   isGroupActive = (group: Group) => {
-    const classDate = this.getGroupClassDate(group.id);
-    if (!classDate) return false;
-
-    const now = new Date();
-    const startTime = new Date(classDate.startTime);
-    const endTime = new Date(classDate.endTime);
-    const fiveMinutesInMillis = 5 * 60 * 1000;
-
-    return (startTime <= now && now <= endTime) || (startTime > now && startTime.getTime() - now.getTime() <= fiveMinutesInMillis);
+    return !!this.groupAttendanceEnabled()?.[group.id];
   };
 }
