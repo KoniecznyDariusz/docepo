@@ -18,6 +18,7 @@ export class StudentTasklistsComponent {
   studentId = input<string | undefined>();
   courseId = input<string | undefined>();
   groupId = input<string | undefined>();
+  classDateId = input<string | undefined>();
 
   private moodle = inject(MoodleService);
   private router = inject(Router);
@@ -62,7 +63,8 @@ export class StudentTasklistsComponent {
     this.router.navigate(['/solution', this.studentId(), solution.taskId], {
       queryParams: {
         courseId: this.courseId(),
-        groupId: this.groupId()
+        groupId: this.groupId(),
+        classDateId: this.classDateId()
       }
     });
   }

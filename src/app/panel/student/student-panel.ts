@@ -23,6 +23,7 @@ export class StudentPanel implements OnInit, OnDestroy {
   group: Group | undefined;
   course: Course | undefined;
   groupId: string | undefined;
+  classDateId: string | undefined;
   showInfoModal = signal(false);
 
   private route = inject(ActivatedRoute);
@@ -30,6 +31,10 @@ export class StudentPanel implements OnInit, OnDestroy {
   private backNav = inject(BackNavigationService);
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe(q => {
+      this.classDateId = q.get('classDateId') || undefined;
+    });
+
     this.route.params.subscribe(params => {
       const studentId = params['studentId'];
       const groupIdParam = params['groupId'];
@@ -41,10 +46,10 @@ export class StudentPanel implements OnInit, OnDestroy {
           if (g) {
             this.eportalService.getCourse(g.courseId).subscribe(c => this.course = c);
 
-            // back -> attendance (pierwszy termin) albo grupy
-            const firstClassDateId = g.classDates?.[0]?.id;
-            if (firstClassDateId) {
-              this.backNav.setBackUrl(`/attendance/${firstClassDateId}?selected=${studentId}`);
+            // back -> attendance (classDateId z URL albo pierwszy termin) albo grupy
+            const targetClassDateId = this.classDateId || g.classDates?.[0]?.id;
+            if (targetClassDateId) {
+              this.backNav.setBackUrl(`/attendance/${targetClassDateId}?selected=${studentId}`);
             } else {
               this.backNav.setBackUrl(`/groups/${g.courseId}`);
             }

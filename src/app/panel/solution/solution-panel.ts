@@ -53,6 +53,7 @@ export class SolutionPanel implements OnInit {
       const taskId = params['taskId'];
       const courseId = this.route.snapshot.queryParams['courseId'];
       const groupId = this.route.snapshot.queryParams['groupId'] || 'g3';
+      const classDateId = this.route.snapshot.queryParams['classDateId'];
 
       if (studentId && taskId) {
         // Pobierz rozwiązanie
@@ -83,7 +84,10 @@ export class SolutionPanel implements OnInit {
         });
 
         // Ustaw back URL
-        this.backNav.setBackUrl(`/student/${studentId}/${groupId}`);
+        const backUrl = classDateId
+          ? `/student/${studentId}/${groupId}?classDateId=${classDateId}`
+          : `/student/${studentId}/${groupId}`;
+        this.backNav.setBackUrl(backUrl);
       }
     });
   }

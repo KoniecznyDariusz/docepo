@@ -43,11 +43,16 @@ export class StudentListComponent {
   // Signals (Angular 21)
   students = signal<any[]>([]);
   selectedStudentId = signal<string | null>(null);
+  classDateId = signal<string | null>(null);
 
   constructor() {
     // Watch query params for 'selected' student ID
     this.route.queryParamMap.subscribe(q => {
       this.selectedStudentId.set(q.get('selected'));
+    });
+
+    this.route.paramMap.subscribe(p => {
+      this.classDateId.set(p.get('classDateId'));
     });
 
     // Watch groupId input changes
@@ -106,6 +111,10 @@ export class StudentListComponent {
     if (!groupId) {
       return;
     }
-    this.router.navigate(['/student', studentId, groupId]);
+    this.router.navigate(['/student', studentId, groupId], {
+      queryParams: {
+        classDateId: this.classDateId() || undefined
+      }
+    });
   }
 }
