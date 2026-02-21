@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';

@@ -13,8 +13,6 @@ import { Solution, SolutionStatus } from 'app/model/solution.model';
   providedIn: 'root'
 })
 export class MoodleService {
-  private readonly currentClassLeadMinutes = 5;
-  private readonly currentClassGraceMinutes = 15;
 
   // Przykładowe dane - w przyszłości zastąpione pobieraniem z API
   private students: Student[] = [
@@ -24,6 +22,8 @@ export class MoodleService {
     { id: '4', firstName: 'Maria', lastName: 'Wójcik', status: 'L' },
     { id: '5', firstName: 'Krzysztof', lastName: 'Zieliński', status: null },
   ];
+  private readonly currentClassLeadMinutes = 5;
+  private readonly currentClassGraceMinutes = 15;
 
   // Przykładowe dane kursów - w przyszłości zastąpione pobieraniem z API
   private courses: Course[] = [
@@ -66,7 +66,7 @@ export class MoodleService {
     { id: 't1', courseId: 'c2', name: 'L01', description: 'Podstawowe pętle i warunki', maxPoints: 100, dueDate: new Date(this.now + 7 * 24 * 60 * 60 * 1000) },
     { id: 't2', courseId: 'c2', name: 'L02', description: 'Funkcje i rekurencja', maxPoints: 100, dueDate: new Date(this.now + 14 * 24 * 60 * 60 * 1000) },
     { id: 't3', courseId: 'c2', name: 'L03', description: 'Tablice i struktury danych', maxPoints: 50, dueDate: new Date(this.now + 21 * 24 * 60 * 60 * 1000) },
-    { id: 't4', courseId: 'c2', name: 'L04', description: 'Zaawansowane algorytmy', maxPoints: 100, dueDate: new Date(this.now + 28 * 24 * 60 * 60 * 1000) },
+    { id: 't4', courseId: 'c2', name: 'L04', description: 'Zaawansowane algorytmy', maxPoints: 100, dueDate: new Date(this.now + 28 * 24 * 60 * 60 * 1000) }
   ];
 
   // Przykładowe dane obecności (attendance) dla wszystkich kombinacji studentów × terminów
@@ -83,8 +83,10 @@ export class MoodleService {
 
   updateAttendance(studentId: string, status: AttendanceStatus | null, classDateId?: string): Observable<void> {
     // Zaktualizuj wpis obecności dla danego studenta i terminu zajęć.
-    // Jeśli classDateId nie podan
-      console.log(`Nie można zmienić statusu obecności dla terminu ${classDateId}, który nie jest bieżący.`);o, używamy pierwszego znanego terminu (dla prostoty przykładu).
+    // Jeśli classDateId nie podano, używamy pierwszego znanego terminu (dla prostoty przykładu).
+    if (classDateId && !this.isCurrentClassDate(classDateId)) {
+      console.log(`Nie można zmienić statusu obecności dla terminu ${classDateId}, który nie jest bieżący.`);
+    }
     const targetClassDateId = classDateId || (this.classDates[0] && this.classDates[0].id) || 'cd1';
 
     let entry = this.attendances.find(a => a.studentId === studentId && a.classDateId === targetClassDateId);
@@ -191,7 +193,7 @@ export class MoodleService {
     const leadMillis = this.currentClassLeadMinutes * 60 * 1000;
     const graceMillis = this.currentClassGraceMinutes * 60 * 1000;
 
-    // Szukamy terminu bieżącego z buforem: 5 min przed startem i 15 min po zakończeniu
+    // Szukamy terminu, który się właśnie odbiera (startTime <= now <= endTime)
     const currentClassDate = classDates.find(cd => {
       const startTime = new Date(cd.startTime);
       const endTime = new Date(cd.endTime);

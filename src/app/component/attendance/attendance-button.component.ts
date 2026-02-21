@@ -1,5 +1,4 @@
 import { Component, input, output } from "@angular/core";
-import { CommonModule } from "@angular/common";
 import { AttendanceStatus } from "app/model/AttendanceStatus.model";  
 // attendance-button.component.ts
 

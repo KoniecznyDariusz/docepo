@@ -1,4 +1,4 @@
-import { Component, input, computed } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Group } from 'app/model/group.model';

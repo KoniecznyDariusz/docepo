@@ -3,8 +3,6 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Course } from 'app/model/course.model';
 import { MoodleService } from 'app/service/moodle.service';
-import { Group } from 'app/model/group.model';
-import { ClassDate } from 'app/model/classDate.model';
 import { ActivatedRoute } from '@angular/router';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/common/footer/footer.component';

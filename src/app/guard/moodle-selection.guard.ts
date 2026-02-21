@@ -1,8 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { StorageService } from '../service/storage.service';
 
-export const moodleSelectionGuard: CanActivateFn = async (route, state) => {
+export const moodleSelectionGuard: CanActivateFn = async (_route, _state) => {
   const storageService = inject(StorageService);
   const router = inject(Router);
 
