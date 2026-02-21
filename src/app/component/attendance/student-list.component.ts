@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { StudentRowComponent } from './student-row.component';
 import { MoodleService } from 'app/service/moodle.service';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
+import { Student } from 'app/model/student.model';
 
 @Component({
   selector: 'app-student-list',
@@ -42,15 +43,29 @@ export class StudentListComponent {
   classDateId = input<string | undefined>();
   selectedStudentId = input<string | null>(null);
   // Signals (Angular 21)
-  students = signal<any[]>([]);
+  students = signal<Student[]>([]);
 
   constructor() {
     // Watch groupId input changes
     effect(() => {
       const gid = this.groupId();
+      const classDateId = this.classDateId();
       if (gid) {
         this.eportalService.getStudents(gid).subscribe(list => {
-          this.students.set(list || []);
+          const students = list || [];
+          if (!classDateId) {
+            this.students.set(students);
+            return;
+          }
+
+          this.eportalService.getAttendancesForClassDate(classDateId).subscribe(attendances => {
+            const statusByStudentId = new Map(attendances.map(a => [a.studentId, a.status]));
+            const mappedStudents = students.map(student => ({
+              ...student,
+              status: statusByStudentId.has(student.id) ? statusByStudentId.get(student.id)! : null
+            }));
+            this.students.set(mappedStudents);
+          });
         });
       } else {
         this.students.set([]);
@@ -71,7 +86,10 @@ export class StudentListComponent {
   }
 
   updateStatus(event: {studentId: string, status: AttendanceStatus | null}) {
-    this.eportalService.updateAttendance(event.studentId, event.status).subscribe(() => {
+    this.eportalService.updateAttendance(event.studentId, event.status, this.classDateId()).subscribe(() => {
+      this.students.update(list => list.map(student =>
+        student.id === event.studentId ? { ...student, status: event.status } : student
+      ));
       this.scrollToNext();
     });
   }
