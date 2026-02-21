@@ -1,38 +1,184 @@
-Docepo - aplikacja wspomagająca prowadzenie bieżących zajęć.
+## Docepo – kontekst projektu dla AI
 
-Ma służyć nauczycielowi akademickiemu do bieżącego prowadzenia zajęć. Zakłada, że wcześniej prowadzący przygotował podział studentów na rozłączne grupy, dla każdej grupy przygotowane są terminy zajęć.
-Podobnie przygotował zadania, ich punktację itp.
-Początkowa wersja zakłada użycie w interfejsie użytkownika języka polskiego, natomiast w kodzie - języka angielskiego do identyfikatorów.
+### 1) Cel aplikacji
+Docepo to aplikacja wspomagająca nauczyciela akademickiego w bieżącym prowadzeniu zajęć.
 
-Aplikacja ma być głównie używana na komórce. Ostateczne dane będą pobierane z moodle poprzez odpowiednie api. Początkowo będzie to symulowane przez serwis moodle.servis.ts
-Będzie głównie odczytywać dane potrzebne do prezentacji w panelach. 
+Założenia domenowe:
+- prowadzący ma wcześniej przygotowane kursy, grupy i terminy zajęć
+- przygotowane są zadania i ich punktacja
+- aplikacja wspiera głównie odczyt danych i szybkie zmiany stanu obecności
+- interfejs użytkownika: język polski
+- kod i identyfikatory techniczne: język angielski
 
-Bieżące zajęcia - termin zajęć (dla danej grupy w ramach danego kursu zalogowane użytkownika) przypada na obecny czas zegarowy plus/minus 15 minut.
+### 2) Platforma i źródła danych
+- Priorytet: użycie mobilne (telefon).
+- Źródło danych docelowo: Moodle API.
+- Na etapie developmentu dane są symulowane przez `moodle.service.ts`.
 
-Obecności - funkcjonalności.
+### 3) Definicja „bieżących zajęć”
+„Bieżące zajęcia” to termin zajęć dla danej grupy (w ramach kursu zalogowanego użytkownika),
+którego czas przypada w oknie:
+`start zajęć - 15 minut <= teraz <= end zajęć + 15 minut`.
 
-Jeśli chodzi o modyfikację obecności, to aplikacja będzie modyfikować tylko stan obecności danego studenta. Będzie to tylko możliwe dla bieżących zajęć. Dane które będą zmieniane to obecność studenta na bieżących zajęciach.
-Będą też odczytywane wszystkie terminy zajęć danej grupy, do której student należy, aby zaprezentować je w sposób graficzny w panelu studenta.
+Czyli system bazuje na danych Moodle (`start`, `end`) i rozszerza okno aktywności o 15 minut
+z każdej strony (wcześniejsze sprawdzenie lub opóźnione zakończenie zajęć).
 
-Panel listy obecności.
+### 4) Obecności – zakres funkcjonalny
+- Możliwa jest wyłącznie modyfikacja stanu obecności studenta.
+- Modyfikacja jest dozwolona tylko dla bieżących zajęć.
+- Odczyt obejmuje też wszystkie terminy zajęć grupy, aby pokazać kontekst historyczny w panelu studenta.
 
-U góry dane o prowadzącym, kursie, grupie i terminie zajęć.
-Poniżej posortowana w/g nazwisk i imion lista studentów. Te dane po lewej stronie (z numerem porządkowym), a po prawej okrągłe przyciski P/A/L do pamiętania stanu obecności (present/absent/late) działające jak on/off radiobutton-y, ale z możliwością odznaczenia.
+#### Panel listy obecności
+- Górna sekcja: prowadzący, kurs, grupa, termin zajęć.
+- Lista studentów: sortowanie po nazwisku i imieniu.
+- Po lewej: numer porządkowy + dane studenta.
+- Po prawej: okrągłe przełączniki P/A/L (Present/Absent/Late), działające jak radio z możliwością odznaczenia.
 
-Zadania i rozwiązania.
+### 5) Zadania i rozwiązania
+#### Task
+Encja `Task` zawiera:
+- `id`,
+- `name` (najczęściej format `Lnn`, np. `L01`),
+- `description`,
+- `maxPoints` (najczęściej 50 lub 100 w danych testowych).
 
-Do modelu dołożymy teraz zadanie (Task). Ma mieć id, nazwę (najczęściej postaci Lnn, gdzie nn to dwie cyfry), opis, maksymalną liczbę punktów (najczęściej 50 lub 100, to będzie w danych do testów). Inna klasa to Rozwiązanie (Solution), które oznacza realizację przez danego studenta danego zadania. Rozwiązanie zatem posiada id, id studenta, id zadania, datę wykonania, liczbę punktów (od zera do maksymalnej za dane zadanie), datę, komentarz, oraz stan. Pusty stan to inaczej jeszcze nie ocenione zadanie (znak minus), z komentarzem (C - comment) co trzeba poprawić, ocenione zadanie (G - graded), z ostrzeżeniem w komentarzu (W - warning), z wgranym rozwiązaniem na ePortal (U - uploaded), zakończone pozytywnie (P - positive), zakończone negatywnie (N - negative). Trzebaby zatem dla testowania przygotowac w serwisie moodle kilka zadań, a potem dla bieżącej grupy dla wszystkich studentów rozwiązania.
+#### Solution
+Encja `Solution` oznacza realizację zadania przez studenta i zawiera:
+- `id`,
+- `studentId`,
+- `taskId`,
+- `submissionDate`,
+- `points` (0..`maxPoints`),
+- `comment`,
+- `status`.
 
+Statusy `Solution`:
+- `-` = jeszcze nieocenione,
+- `C` = comment (co poprawić),
+- `G` = graded,
+- `W` = warning,
+- `U` = uploaded,
+- `P` = positive,
+- `N` = negative.
 
-Używaj nowszych mechanizmów z Angular 21 (signal, funkcji input() itp.)
+W danych testowych w `moodle.service.ts` przygotować:
+- kilka zadań (`Task`),
+- dla bieżącej grupy rozwiązania (`Solution`) dla wszystkich studentów.
 
-do przechowywania danych używaj @capacitor/preferences
+### 6) Wytyczne techniczne
+- Angular 21+: używaj nowoczesnych mechanizmów (`signals`, `input()`, `computed()`, `effect()`, nowy control flow).
+- Trwałe przechowywanie danych: `@capacitor/preferences`.
+- Routing: przekazuj stan przez adresy URL i parametry tras; nie opieraj logiki na stosie historii przeglądarki.
 
-do routingu używać adresów url z parametrami, nigdy nie używać stosu historii przeglądarki.
+### 7) UX i wydajność
+- Priorytet: szybkość i czytelność, nie animacje.
+- Animacje tylko tam, gdzie realnie wzmacniają informację (np. przesuwanie listy studentów).
 
-Aplikacja ma być raczej szybka niż z animacjami. Animacje są tam gdzie to rzeczywiście daje poczucie dodatkowej informacji, jak przesuwanie listu studentów w górę/dół na panelu obecności. 
+### 8) Zasady pracy AI w tym repo
+- Proponuj minimalne, konkretne zmiany zgodne z aktualną architekturą.
+- Nie zmieniaj nazw i struktury modułów bez wyraźnej potrzeby.
+- Dla nowych funkcji najpierw aktualizuj modele i serwisy danych, potem panele UI.
+- W rozwiązaniach uwzględniaj „Deep Scan” (analiza wpływu na routing, modele, serwisy i panele).
 
-Zrobić "Deep Scan".
+### 9) Starter prompt (do wklejenia na start sesji)
+Skopiuj poniższy szablon i uzupełnij sekcję „Zadanie”.
 
-dobry LLM - Claude Haiki 4.5
+```text
+Pracujesz w projekcie Docepo (Angular 21 + Capacitor, mobile-first).
+
+Kontekst domenowy:
+- Aplikacja dla nauczyciela akademickiego do bieżącego prowadzenia zajęć.
+- UI po polsku, kod po angielsku.
+- Dane docelowo z Moodle API, lokalnie symulowane w `moodle.service.ts`.
+- Bieżące zajęcia: termin w oknie `start zajęć - 15 min <= teraz <= end zajęć + 15 min`.
+
+Wymagania techniczne:
+- Używaj nowoczesnego Angulara (signals, input(), computed(), effect(), nowy control flow).
+- Trwałe dane zapisuj przez `@capacitor/preferences`.
+- Routing opieraj na URL i parametrach tras; nie opieraj logiki na historii przeglądarki.
+- Preferuj minimalne, precyzyjne zmiany i wykonuj Deep Scan wpływu na modele, serwisy, routing i panele.
+
+Wymagania UX:
+- Priorytet: szybkość i czytelność.
+- Animacje tylko gdy niosą informację.
+
+Zadanie:
+[TU WSTAW ZADANIE]
+
+Kryteria akceptacji:
+1) [kryterium 1]
+2) [kryterium 2]
+3) [kryterium 3]
+
+Sposób odpowiedzi:
+- Najpierw krótki plan.
+- Potem konkretne zmiany w plikach.
+- Na końcu: co zostało zrobione i co warto zrobić dalej.
+```
+
+### 10) Starter prompt ultra-krótki (quick fix)
+Używaj tego wariantu, gdy zmiana jest mała i konkretna.
+
+```text
+Projekt: Docepo (Angular 21 + Capacitor, mobile-first, UI PL / kod EN).
+Zasady: minimalna zmiana, nowoczesny Angular (signals/input), routing przez parametry URL, Deep Scan wpływu.
+Zadanie: [TU WSTAW ZADANIE]. Kryteria: [1-2 krótkie punkty].
+```
+
+### 11) Stan implementacji (skrót)
+Szczegóły bieżącego zachowania systemu znajdują się w sekcji 15.
+
+- Dane: aktualnie mock w `moodle.service.ts`, docelowo Moodle API.
+- Storage: używany `@capacitor/preferences` (klucz `moodleUrl`).
+- Architektura UI: standalone components + częściowe użycie sygnałów Angular.
+
+### 12) Kontrakt modeli (aktualny kod)
+Ta sekcja jest źródłem prawdy dla AI przy modyfikacji modeli i serwisów.
+
+#### Task (aktualnie)
+- `id: string`
+- `courseId: string`
+- `name: string`
+- `description: string`
+- `maxPoints: number`
+- `dueDate: Date`
+
+#### Solution (aktualnie)
+- `id: string`
+- `studentId: string`
+- `taskId: string`
+- `completedAt: Date`
+- `points: number`
+- `comment: string`
+- `status: '' | 'C' | 'G' | 'W' | 'U' | 'P' | 'N'`
+
+Uwaga: status „nieocenione” jest obecnie pustym stringiem `''` (w UI może być pokazywany jako `-`).
+
+### 13) Kontrakt routingu i nawigacji
+Kanoniczny przepływ ekranów (obecnie używany):
+- `/moodle-selection` → `/course` → `/groups/:courseId` → `/attendance/:classDateId` → `/student/:studentId/:groupId` → `/solution/:studentId/:taskId`
+
+Zasady:
+- Przekazuj dane kontekstowe przez parametry ścieżki i parametry query.
+- Przyciski „wstecz” obsługuj przez `BackNavigationService` i `backTo` w `route.data`.
+- Nie opieraj logiki na stosie historii przeglądarki.
+
+Uwaga techniczna:
+- W projekcie istnieją również trasy `/panel/...` (legacy/przejściowe). AI ma traktować je jako obszar do uporządkowania, a nie domyślny punkt rozbudowy.
+
+### 14) Kontrakt storage
+Klucze i ich znaczenie:
+- `moodleUrl: string` – adres instancji Moodle, ustawiany na panelu wyboru Moodle.
+
+Zasady:
+- Guard wejścia do głównych paneli sprawdza obecność `moodleUrl`.
+- Brak `moodleUrl` => przekierowanie na `/moodle-selection`.
+- Dane trwałe zapisuj przez `StorageService` (opakowanie na `@capacitor/preferences`).
+
+### 15) Stan ustaleń (zgodny z aktualnym kodem)
+- Bieżące zajęcia: obowiązuje okno `start zajęć - 15 minut <= teraz <= end zajęć + 15 minut`.
+- Status nieocenione w `Solution.status`: obecnie pusty string `''` (w UI może być pokazywany jako `-`).
+- Routing: obowiązuje URL-first (parametry ścieżki + parametry query), bez logiki opartej o historię.
+- Trasy legacy `/panel/...`: działają jako przekierowania kompatybilności do gałęzi kanonicznej.
+- Aktualizacja obecności: wymaga `classDateId` i zapis jest dozwolony tylko dla bieżących zajęć (okno ±15 minut).
 
