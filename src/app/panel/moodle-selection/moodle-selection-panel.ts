@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { StorageService } from '../../service/storage.service';
+import { MoodleEndpoint, StorageService } from '../../service/storage.service';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/common/footer/footer.component';
 
@@ -19,11 +19,22 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
   private backNav = inject(BackNavigationService);
 
   moodleUrl: string = '';
+  endpointSelection: string = '';
+  moodleEndpoints: MoodleEndpoint[] = [];
   isLoading: boolean = false;
   errorMessage: string = '';
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.backNav.setBackUrl(null);
+    const [storedUrl, endpoints] = await Promise.all([
+      this.storageService.getMoodleUrl(),
+      this.storageService.getMoodleEndpoints()
+    ]);
+
+    this.moodleEndpoints = endpoints;
+    if (storedUrl) {
+      this.moodleUrl = storedUrl;
+    }
   }
 
   ngOnDestroy(): void {
@@ -32,6 +43,11 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
 
   onBack(): void {
     this.backNav.goBack();
+  }
+
+  onEndpointSelected(url: string): void {
+    if (!url) return;
+    this.moodleUrl = url;
   }
 
   async onSubmit() {
