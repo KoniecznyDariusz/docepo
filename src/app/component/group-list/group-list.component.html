@@ -8,7 +8,7 @@
       @if (groupAttendanceEnabled()[group.id]) {
         <a [routerLink]="['/attendance', classDate.id]"
            class="group-item"
-           [ngClass]="{ 'highlighted': isGroupActive(group) }">
+           [class.highlighted]="isGroupActive(group)">
 
           <div class="group-details">
             <h2 class="group-name">{{ group.name }}</h2>

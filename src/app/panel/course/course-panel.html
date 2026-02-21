@@ -17,7 +17,8 @@
   <main class="courses-list flex-1 overflow-auto">
     @for (course of courses; track course.id) {
      <a [routerLink]="['/groups', course.id]"
-       [ngClass]="{ 'course-item': true, 'highlighted': courseHighlighted[course.id] }">
+       class="course-item"
+       [class.highlighted]="courseHighlighted[course.id]">
 
       <div class="course-details">
         <h2>{{ course.name }}</h2>

@@ -30,10 +30,8 @@
             <div class="mt-2 w-full bg-gray-700 rounded-full h-2.5">
               <div 
                 class="h-2.5 rounded-full transition-all duration-300"
-                [ngStyle]="{ 
-                  'width.%': (solution.points / task.maxPoints) * 100,
-                  'backgroundColor': solutionSettings.getSolutionFillColor(solution.points, task.maxPoints)
-                }">
+                [style.width.%]="(solution.points / task.maxPoints) * 100"
+                [style.background-color]="solutionSettings.getSolutionFillColor(solution.points, task.maxPoints)">
               </div>
             </div>
           </div>

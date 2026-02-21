@@ -38,9 +38,11 @@
         />
       </div>
 
-      <div *ngIf="errorMessage" class="mb-4 p-3 bg-red-900 border border-red-700 rounded-lg text-red-200 text-sm">
-        {{ errorMessage }}
-      </div>
+      @if (errorMessage) {
+        <div class="mb-4 p-3 bg-red-900 border border-red-700 rounded-lg text-red-200 text-sm">
+          {{ errorMessage }}
+        </div>
+      }
 
       <button
         (click)="onSubmit()"
