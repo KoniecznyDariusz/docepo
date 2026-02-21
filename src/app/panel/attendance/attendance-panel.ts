@@ -1,17 +1,18 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { StudentListComponent } from 'app/component/attendance/student-list.component';
 import { BackNavigationService } from 'app/service/back-navigation.service';
+import { FooterComponent } from 'app/component/common/footer/footer.component';
 
 @Component({
   selector: 'app-attendance-panel',
   standalone: true,
-  imports: [CommonModule, RouterLink, StudentListComponent, DatePipe],
+  imports: [CommonModule, StudentListComponent, DatePipe, FooterComponent],
   templateUrl: './attendance-panel.html',
   styleUrl: './attendance-panel.css'
 })

@@ -1,35 +1,38 @@
-<div class="flex flex-col items-center justify-center h-full w-full gap-8 px-6">
-  <div class="text-center">
-    <h1 class="text-4xl font-bold mb-2">DocEpo</h1>
-    <p class="text-gray-400">Wybierz adres platformy Moodle</p>
-  </div>
+<div class="h-screen flex flex-col bg-gray-900 text-white">
+  <main class="flex-1 flex flex-col items-center justify-center gap-8 px-6">
+    <div class="text-center">
+      <h1 class="text-4xl font-bold mb-2">DocEpo</h1>
+      <p class="text-gray-400">Wybierz adres platformy Moodle</p>
+    </div>
 
-  <div class="w-full max-w-md">
-    <div class="mb-4">
-      <label for="moodleUrl" class="block text-sm font-medium mb-2">
-        Adres platformy Moodle
-      </label>
-      <input
-        id="moodleUrl"
-        type="text"
-        [(ngModel)]="moodleUrl"
-        placeholder="np. https://moodle.example.com"
-        class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+    <div class="w-full max-w-md">
+      <div class="mb-4">
+        <label for="moodleUrl" class="block text-sm font-medium mb-2">
+          Adres platformy Moodle
+        </label>
+        <input
+          id="moodleUrl"
+          type="text"
+          [(ngModel)]="moodleUrl"
+          placeholder="np. https://moodle.example.com"
+          class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <div *ngIf="errorMessage" class="mb-4 p-3 bg-red-900 border border-red-700 rounded-lg text-red-200 text-sm">
+        {{ errorMessage }}
+      </div>
+
+      <button
+        (click)="onSubmit()"
         [disabled]="isLoading"
-      />
+        class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+      >
+        {{ isLoading ? 'Zapisywanie...' : 'Dalej' }}
+      </button>
     </div>
+  </main>
 
-    <div *ngIf="errorMessage" class="mb-4 p-3 bg-red-900 border border-red-700 rounded-lg text-red-200 text-sm">
-      {{ errorMessage }}
-    </div>
-
-    <button
-      (click)="onSubmit()"
-      [disabled]="isLoading"
-      class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
-    >
-      {{ isLoading ? 'Zapisywanie...' : 'Dalej' }}
-    </button>
-    <button type="button" (click)="onBack()">Wstecz</button>
-  </div>
+  <app-footer></app-footer>
 </div>

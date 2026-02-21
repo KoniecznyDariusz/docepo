@@ -28,8 +28,5 @@
     <app-student-list [groupId]="group?.id"></app-student-list>
   </main>
 
-  <div class="footer-actions">
-    <a [routerLink]="['/groups', course?.id]" class="back-button">↩ <span class="btn-label">grupy</span></a>
-    <button type="button" (click)="onBack()">Wstecz</button>
-  </div>
+  <app-footer [backUrl]="'/groups/' + course?.id"></app-footer>
 </div>

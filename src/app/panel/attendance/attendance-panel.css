@@ -4,31 +4,6 @@
   width: 100%;
 }
 
-/* Floating back button shared style */
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: #fff;
-  font-weight: 700;
-  background: rgba(255,255,255,0.03);
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
-/* floating-back not used when footer is present */
-.floating-back {
-  display: none;
-}
-
-.footer-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 12px;
-}
-
 .main-content {
   padding-bottom: 0px; /* leave space for footer */
 }

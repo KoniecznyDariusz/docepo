@@ -6,11 +6,12 @@ import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { GroupListComponent } from 'app/component/group-list/group-list.component';
 import { BackNavigationService } from 'app/service/back-navigation.service';
+import { FooterComponent } from 'app/component/common/footer/footer.component';
 
 @Component({
   selector: 'app-group-panel',
   standalone: true,
-  imports: [CommonModule, GroupListComponent],
+  imports: [CommonModule, GroupListComponent, FooterComponent],
   templateUrl: './group-panel.html',
   styleUrls: ['./group-panel.css']
 })

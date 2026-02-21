@@ -1,0 +1,37 @@
+@if (show) {
+  <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="onBackdropClick()">
+    <div class="bg-gray-900 rounded-t-lg md:rounded-lg p-6 max-w-md w-full md:max-h-[80vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-white">Informacje</h2>
+        <button 
+          type="button"
+          (click)="onClose()"
+          class="text-gray-400 hover:text-white text-xl">
+          ×
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <p class="text-sm text-gray-400">Student</p>
+          <p class="text-base font-semibold text-white">{{ student?.lastName }} {{ student?.firstName }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Przedmiot</p>
+          <p class="text-base font-semibold text-white">{{ course?.name || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Grupa</p>
+          <p class="text-base font-semibold text-white">{{ group?.name || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Zadanie</p>
+          <p class="text-base font-semibold text-white">{{ task?.name }} - {{ task?.description }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+}

@@ -1,6 +1,6 @@
-<div class="course-panel-container">
+<div class="course-panel-container h-screen flex flex-col bg-gradient-to-b from-red-700 to-red-900">
   <!-- Górny panel z danymi prowadzącego i akcjami -->
-  <header class="header-section">
+  <header class="header-section flex-none">
     <div class="instructor-info">
       <h3>Dane Prowadzącego</h3>
       <!-- W przyszłości te dane będą wczytywane dynamicznie -->
@@ -14,7 +14,7 @@
   </header>
 
   <!-- Lista kursów -->
-  <main class="courses-list">
+  <main class="courses-list flex-1 overflow-auto">
     @for (course of courses; track course.id) {
      <a [routerLink]="['/groups', course.id]"
        [ngClass]="{ 'course-item': true, 'highlighted': courseHighlighted[course.id] }">
@@ -26,8 +26,5 @@
     }
   </main>
 
-  <!-- Podsumowanie -->
-  <footer class="courses-footer">
-    <button type="button" (click)="onExit()">koniec</button>
-  </footer>
+  <app-footer></app-footer>
 </div>

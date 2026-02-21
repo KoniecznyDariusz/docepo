@@ -1,16 +1,6 @@
 <div class="solution-panel h-screen flex flex-col bg-gray-900 text-white">
   <header class="flex-none p-4 border-b border-gray-700 bg-gray-800 shadow-md z-20">
-    <div class="flex justify-between items-center">
-      <div>
-        <p class="text-lg font-bold text-white">{{ task?.name }}</p>
-      </div>
-      <button 
-        type="button" 
-        (click)="openInfoModal()"
-        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors">
-        Info
-      </button>
-    </div>
+    <p class="text-lg font-bold text-white">{{ task?.name }}</p>
   </header>
 
   <main class="flex-1 overflow-auto p-4 space-y-4">
@@ -27,13 +17,25 @@
 
           <div>
             <p class="text-sm text-gray-400">Punkty</p>
-            <p class="text-base font-semibold">
-              {{ solution.points }} / {{ task.maxPoints }}
-            </p>
+            <div class="flex items-center justify-between">
+              <p class="text-base font-semibold">
+                {{ solution.points }} / {{ task.maxPoints }}
+              </p>
+              <button 
+                type="button" 
+                (click)="openPointsEditor()"
+                class="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors"
+                title="Edytuj punkty">
+                ✏️
+              </button>
+            </div>
             <div class="mt-2 w-full bg-gray-700 rounded-full h-2.5">
               <div 
-                class="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
-                [ngStyle]="{ 'width.%': (solution.points / task.maxPoints) * 100 }">
+                class="h-2.5 rounded-full transition-all duration-300"
+                [ngStyle]="{ 
+                  'width.%': (solution.points / task.maxPoints) * 100,
+                  'backgroundColor': getSolutionFillColor(solution.status)
+                }">
               </div>
             </div>
           </div>
@@ -122,52 +124,93 @@
     </div>
   }
 
-  <!-- Info Modal -->
-  @if (showInfoModal()) {
-    <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closeInfoModal()">
-      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96 max-h-96 overflow-auto" (click)="$event.stopPropagation()">
+  <!-- Points Editor Modal -->
+  @if (showPointsModal()) {
+    <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="closePointsEditor()">
+      <div class="bg-gray-800 rounded-t-lg md:rounded-lg p-6 w-full md:w-96" (click)="$event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold text-white">Informacje</h2>
+          <h2 class="text-lg font-bold text-white">Edytuj punkty</h2>
           <button 
             type="button" 
-            (click)="closeInfoModal()"
+            (click)="closePointsEditor()"
             class="text-gray-400 hover:text-white text-2xl font-bold">
             ×
           </button>
         </div>
 
         <div class="space-y-4">
-          <div>
-            <p class="text-sm text-gray-400">Student</p>
-            <p class="text-base font-semibold text-white">{{ student?.lastName }} {{ student?.firstName }}</p>
+          <!-- Current points display -->
+          <div class="text-center">
+            <p class="text-sm text-gray-400">Punkty</p>
+            <p class="text-3xl font-bold text-white">
+              {{ editedPoints() }} / {{ task?.maxPoints }}
+            </p>
+            <p class="text-sm text-gray-400 mt-1">
+              {{ (task?.maxPoints ?? 1) > 0 ? ((editedPoints() / (task?.maxPoints ?? 1)) * 100).toFixed(0) : 0 }}%
+            </p>
           </div>
 
+          <!-- Range slider -->
           <div>
-            <p class="text-sm text-gray-400">Przedmiot</p>
-            <p class="text-base font-semibold text-white">{{ course?.name || '-' }}</p>
+            <input 
+              type="range" 
+              [min]="0" 
+              [max]="task?.maxPoints || 100"
+              [value]="editedPoints()"
+              (input)="editedPoints.set(+$any($event.target).value)"
+              class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
           </div>
 
-          <div>
-            <p class="text-sm text-gray-400">Grupa</p>
-            <p class="text-base font-semibold text-white">{{ group?.name || '-' }}</p>
+          <!-- Quick selection buttons -->
+          <div class="flex gap-2">
+            <button 
+              type="button" 
+              (click)="setQuickPoints(100)"
+              class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors">
+              100%
+            </button>
+            <button 
+              type="button" 
+              (click)="setQuickPoints(80)"
+              class="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors">
+              80%
+            </button>
+            <button 
+              type="button" 
+              (click)="setQuickPoints(50)"
+              class="flex-1 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded transition-colors">
+              50%
+            </button>
           </div>
 
-          <div>
-            <p class="text-sm text-gray-400">Zadanie</p>
-            <p class="text-base font-semibold text-white">{{ task?.name }} - {{ task?.description }}</p>
+          <!-- Action buttons -->
+          <div class="flex gap-2 pt-2">
+            <button 
+              type="button" 
+              (click)="savePoints()"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition-colors">
+              Ustaw
+            </button>
+            <button 
+              type="button" 
+              (click)="closePointsEditor()"
+              class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
+              Anuluj
+            </button>
           </div>
         </div>
       </div>
     </div>
   }
 
-  <!-- Footer -->
-  <footer class="flex-none p-4 border-t border-gray-700 bg-gray-800">
-    <button 
-      type="button" 
-      (click)="onBack()"
-      class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors">
-      Wstecz
-    </button>
-  </footer>
+  <app-footer [showInfoButton]="true" (infoClick)="openInfoModal()"></app-footer>
+
+  <app-info-task 
+    [show]="showInfoModal()" 
+    [student]="student" 
+    [course]="course" 
+    [group]="group" 
+    [task]="task" 
+    (close)="closeInfoModal()">
+  </app-info-task>
 </div>

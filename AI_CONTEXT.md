@@ -30,6 +30,9 @@ do przechowywania danych używaj @capacitor/preferences
 
 do routingu używać adresów url z parametrami, nigdy nie używać stosu historii przeglądarki.
 
+Aplikacja ma być raczej szybka niż z animacjami. Animacje są tam gdzie to rzeczywiście daje poczucie dodatkowej informacji, jak przesuwanie listu studentów w górę/dół na panelu obecności. 
+
 Zrobić "Deep Scan".
 
 dobry LLM - Claude Haiki 4.5
+

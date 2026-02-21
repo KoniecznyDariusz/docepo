@@ -20,27 +20,6 @@
   overflow: auto;
 }
 
-.footer-actions {
-  flex: 0 0 64px; /* stała wysokość stopki */
-  padding: 12px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: #fff;
-  font-weight: 700;
-  background: rgba(255,255,255,0.03);
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
 .btn-label {
   text-transform: lowercase;
 }

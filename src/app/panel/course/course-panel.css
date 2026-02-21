@@ -5,13 +5,8 @@
 }
 
 .course-panel-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
   background-color: #B22222; /* Ceglany kolor (FireBrick) */
   color: white;
-  overflow-y: auto; /* Umożliwia przewijanie, jeśli lista jest długa */
 }
 
 /* --- Górny panel --- */
@@ -22,12 +17,11 @@
   padding: 1rem 5%;
   background-color: rgba(0, 0, 0, 0.2);
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0; /* Zapobiega kurczeniu się nagłówka */
 }
 
 .instructor-info h3 {
   margin: 0;
-  font-size: 1.5rem; /* Średnio duża czcionka */
+  font-size: 1.5rem;
 }
 
 .instructor-info p {
@@ -40,7 +34,7 @@
   background: none;
   border: none;
   color: white;
-  font-size: 2rem; /* Duża ikona */
+  font-size: 2rem;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
@@ -57,6 +51,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 0;
 }
 
 .course-item {
@@ -80,40 +75,18 @@
 
 .course-details h2 {
   margin: 0 0 0.5rem 0;
-  font-size: 1.75rem; /* Dobrze widoczne litery */
+  font-size: 1.75rem;
   font-weight: 600;
   text-align: left;
 }
 
-.course-time {
-  font-size: 1rem;
-  font-weight: 500;
-  white-space: normal;
-  margin-left: 0;
-  margin-top: 0.5rem;
-  text-align: right;
-}
-
-/* --- Wyróżnienie aktywnego kursu --- */
 .course-item.highlighted {
-  background-color: #2E8B57; /* Ciemniejszy zielony */
-  border-color: #32CD32; /* Jaskrawy zielony */
+  background-color: #2E8B57;
+  border-color: #32CD32;
   box-shadow: 0 0 15px rgba(50, 205, 50, 0.6);
   transform: scale(1.02);
 }
 
 .course-item.highlighted:hover {
   transform: scale(1.03) translateY(-2px);
-}
-
-/* --- Podsumowanie kursów --- */
-.courses-footer {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.exit-btn {
-  padding: 8px 14px;
-  cursor: pointer;
 }

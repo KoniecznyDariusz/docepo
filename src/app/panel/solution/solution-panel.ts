@@ -11,11 +11,13 @@ import { Student } from 'app/model/student.model';
 import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
 import { BackNavigationService } from 'app/service/back-navigation.service';
+import { FooterComponent } from 'app/component/common/footer/footer.component';
+import { InfoTaskComponent } from 'app/component/common/info/info-task/info-task.component';
 
 @Component({
   selector: 'app-solution-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FooterComponent, InfoTaskComponent],
   templateUrl: './solution-panel.html',
   styleUrls: ['./solution-panel.css']
 })
@@ -29,6 +31,8 @@ export class SolutionPanel implements OnInit {
   isEditingComment = signal(false);
   isRecording = signal(false);
   commentText = signal<string>('');
+  showPointsModal = signal(false);
+  editedPoints = signal<number>(0);
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -240,6 +244,45 @@ export class SolutionPanel implements OnInit {
         reject('Nie udało się uruchomić nagrywania: ' + e);
       }
     });
+  }
+
+  getSolutionFillColor(status: string): string {
+    const colors: Record<string, string> = {
+      '': 'rgb(71, 85, 105)',  // slate-600 - dla nie ocenionych
+      'C': 'rgb(234, 179, 8)',  // yellow-500 - komentarz
+      'G': 'rgb(59, 130, 246)', // blue-500 - graded
+      'W': 'rgb(234, 179, 8)',  // yellow-500 - warning
+      'U': 'rgb(59, 130, 246)', // blue-500 - uploaded
+      'P': 'rgb(34, 197, 94)',  // green-500 - positive
+      'N': 'rgb(239, 68, 68)'   // red-500 - negative
+    };
+    return colors[status] || colors[''];
+  }
+
+  openPointsEditor(): void {
+    if (this.solution) {
+      this.editedPoints.set(this.solution.points);
+      this.showPointsModal.set(true);
+    }
+  }
+
+  closePointsEditor(): void {
+    this.showPointsModal.set(false);
+  }
+
+  setQuickPoints(percentage: number): void {
+    if (this.task) {
+      const points = Math.round((this.task.maxPoints * percentage) / 100);
+      this.editedPoints.set(points);
+    }
+  }
+
+  savePoints(): void {
+    if (this.solution && this.task) {
+      this.solution.points = this.editedPoints();
+      // TODO: Wywołanie serwisu do zapisania punktów na serwerze
+      this.closePointsEditor();
+    }
   }
 
   updateSolution(): void {

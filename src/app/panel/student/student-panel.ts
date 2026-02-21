@@ -8,11 +8,13 @@ import { Course } from 'app/model/course.model';
 import { StudentAttendancesComponent } from 'app/component/student/student-attendances/student-attendances.component';
 import { StudentTasklistsComponent } from 'app/component/student/student-tasklists/student-tasklists.component';
 import { BackNavigationService } from 'app/service/back-navigation.service';
+import { FooterComponent } from 'app/component/common/footer/footer.component';
+import { InfoStudentComponent } from 'app/component/common/info/info-student/info-student.component';
 
 @Component({
   selector: 'app-student-panel',
   standalone: true,
-  imports: [CommonModule, StudentAttendancesComponent, StudentTasklistsComponent],
+  imports: [CommonModule, StudentAttendancesComponent, StudentTasklistsComponent, FooterComponent, InfoStudentComponent],
   templateUrl: './student-panel.html',
   styleUrls: ['./student-panel.css']
 })

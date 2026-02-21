@@ -1,0 +1,14 @@
+<footer class="flex-none p-4 border-t border-gray-700 bg-gray-800">
+  <div class="w-full flex justify-between">
+    @if (showInfoButton) {
+      <button 
+        (click)="onInfoClick()"
+        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors">
+        Info
+      </button>
+    } @else {
+      <div></div>
+    }
+    <app-back-button [backUrl]="backUrl"></app-back-button>
+  </div>
+</footer>

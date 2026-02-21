@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StorageService } from '../../service/storage.service';
 import { BackNavigationService } from 'app/service/back-navigation.service';
+import { FooterComponent } from 'app/component/common/footer/footer.component';
 
 @Component({
   selector: 'app-moodle-selection-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './moodle-selection-panel.html',
   styleUrls: ['./moodle-selection-panel.css']
 })
@@ -43,8 +44,11 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     try {
-      await this.storageService.setStorage('moodleUrl', this.moodleUrl);
-      this.router.navigate(['/main']);
+      await this.storageService.setMoodleUrl(this.moodleUrl.trim());
+      const navigated = await this.router.navigate(['/course']);
+      if (!navigated) {
+        this.errorMessage = 'Nie udało się przejść dalej. Spróbuj ponownie.';
+      }
     } catch (error) {
       this.errorMessage = 'Błąd przy zapisywaniu adresu. Spróbuj ponownie.';
       console.error(error);
