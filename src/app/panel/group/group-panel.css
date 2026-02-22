@@ -2,17 +2,10 @@
   display: block;
 }
 
-
 .group-panel-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-}
-
-.header-section {
-  flex: 0 0 72px; /* stała wysokość nagłówka */
-  padding: 16px;
-  box-sizing: border-box;
 }
 
 .group-panel-container > app-group-list {
