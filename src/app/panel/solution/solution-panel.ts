@@ -212,10 +212,22 @@ export class SolutionPanel implements OnInit {
       }
     } catch (error) {
       console.error('Błąd nagrywania:', error);
-      alert('Błąd podczas nagrywania. Sprawdz uprawnienia do mikrofonu.');
+      alert('Błąd podczas nagrywania: ' + this.getSpeechErrorMessage(error));
     } finally {
       this.isRecording.set(false);
     }
+  }
+
+  private getSpeechErrorMessage(error: unknown): string {
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return 'Nieznany błąd. Sprawdź uprawnienia mikrofonu i połączenie HTTPS.';
   }
 
   private webSpeechFallback(): Promise<void> {
