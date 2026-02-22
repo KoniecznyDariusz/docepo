@@ -35,6 +35,25 @@ export class SolutionSettings {
     }
   }
 
+  static getStatusTextColor(status: string): string {
+    switch (status) {
+      case 'G':
+        return 'text-green-300';
+      case 'W':
+        return 'text-green-400';
+      case 'U':
+        return 'text-green-600';
+      case 'P':
+        return 'text-green-700';
+      case 'N':
+        return 'text-red-500';
+      case 'C':
+        return 'text-yellow-400';
+      default:
+        return 'text-gray-400';
+    }
+  }
+
   static getSolutionFillColor(points: number, maxPoints: number): string {
     if (maxPoints <= 0) return 'rgb(71, 85, 105)'; // slate-600
     const percentage = (points / maxPoints) * 100;

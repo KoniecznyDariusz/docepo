@@ -37,14 +37,7 @@
           <div>
             <p class="text-sm text-gray-400">Stan</p>
             <div class="flex items-center justify-between">
-              <p class="text-base font-semibold" 
-                [class.text-gray-400]="!solution.status"
-                [class.text-green-300]="solution.status === 'G'"
-                [class.text-green-400]="solution.status === 'W'"
-                [class.text-green-600]="solution.status === 'U'"
-                [class.text-green-700]="solution.status === 'P'"
-                [class.text-red-500]="solution.status === 'N'"
-                [class.text-yellow-400]="solution.status === 'C'">
+              <p [class]="'text-base font-semibold ' + solutionSettings.getStatusTextColor(solution.status || '')">
                 {{ solutionSettings.getStatusDescription(solution.status || '') }}
               </p>
               <button 

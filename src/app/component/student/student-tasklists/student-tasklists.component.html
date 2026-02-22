@@ -25,14 +25,8 @@
             </div>
 
             <!-- Status badge in top-right corner -->
-            <div class="absolute top-1 right-1 z-20 w-5 h-5 rounded-full flex items-center justify-center border-2 border-black"
-              [class.bg-gray-500]="!solution.status"
-              [class.bg-green-300]="solution.status === 'G'"
-              [class.bg-green-400]="solution.status === 'W'"
-              [class.bg-green-600]="solution.status === 'U'"
-              [class.bg-green-700]="solution.status === 'P'"
-              [class.bg-red-500]="solution.status === 'N'"
-              [class.bg-yellow-400]="solution.status === 'C'">
+            <div
+              [class]="'absolute top-1 right-1 z-20 w-5 h-5 rounded-full flex items-center justify-center border-2 border-black ' + solutionSettings.getStatusBadgeColor(solution.status || '')">
               <span class="text-black text-xs font-bold">{{ solutionSettings.getStatusLabel(solution.status) }}</span>
             </div>
           </button>

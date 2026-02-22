@@ -21,6 +21,11 @@ describe('SolutionSettings', () => {
     expect(SolutionSettings.getStatusBadgeColor('X')).toBe('bg-gray-500');
   });
 
+  it('should return status text color for known and unknown status', () => {
+    expect(SolutionSettings.getStatusTextColor('G')).toBe('text-green-300');
+    expect(SolutionSettings.getStatusTextColor('X')).toBe('text-gray-400');
+  });
+
   it('should return neutral fill color when maxPoints is zero', () => {
     expect(SolutionSettings.getSolutionFillColor(10, 0)).toBe('rgb(71, 85, 105)');
   });
