@@ -1,0 +1,44 @@
+@if (show()) {
+  <div class="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50" (click)="onBackdropClick()">
+    <div class="bg-gray-900 rounded-t-lg md:rounded-lg p-6 max-w-md w-full md:max-h-[80vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-white">Informacje</h2>
+        <button
+          type="button"
+          (click)="onClose()"
+          class="text-gray-400 hover:text-white text-xl">
+          ×
+        </button>
+      </div>
+
+      <div class="space-y-4 text-white">
+        <div>
+          <p class="text-sm text-gray-400">Prowadzący</p>
+          <p class="text-base font-semibold">{{ instructor() || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Kurs</p>
+          <p class="text-base font-semibold">{{ course()?.name || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Grupa</p>
+          <p class="text-base font-semibold">{{ group()?.name || '-' }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-gray-400">Godzina zajęć</p>
+          @if (classDate()) {
+            <p class="text-base font-semibold text-green-400 font-mono">
+              {{ classDate()?.startTime | date:'HH:mm' }} - {{ classDate()?.endTime | date:'HH:mm' }}
+            </p>
+            <p class="text-xs text-gray-400 mt-1">{{ classDate()?.description }}</p>
+          } @else {
+            <p class="text-base font-semibold text-red-400 font-mono">Brak zajęć</p>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

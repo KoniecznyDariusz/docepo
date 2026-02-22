@@ -1,5 +1,5 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
@@ -7,12 +7,13 @@ import { Course } from 'app/model/course.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { StudentListComponent } from 'app/component/attendance/student-list.component';
 import { BackNavigationService } from 'app/service/back-navigation.service';
-import { FooterComponent } from 'app/component/common/footer/footer.component';
+import { FooterComponent } from 'app/component/footer/footer.component';
+import { InfoAttendanceComponent } from 'app/component/info/info-attendance/info-attendance.component';
 
 @Component({
   selector: 'app-attendance-panel',
   standalone: true,
-  imports: [CommonModule, StudentListComponent, DatePipe, FooterComponent],
+  imports: [CommonModule, StudentListComponent, FooterComponent, InfoAttendanceComponent],
   templateUrl: './attendance-panel.html',
   styleUrl: './attendance-panel.css'
 })
@@ -21,6 +22,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
   course: Course | undefined;
   currentClassDate: ClassDate | null = null;
   instructor = 'dr inż. Jan Niezbędny'; // Dane prowadzącego (na razie statyczne)
+  showInfoModal = signal(false);
 
   selectedStudentId: string | null = null;
 
@@ -62,5 +64,13 @@ export class AttendancePanel implements OnInit, OnDestroy {
 
   onBack(): void {
     this.backNav.goBack(this.route.snapshot);
+  }
+
+  openInfoModal(): void {
+    this.showInfoModal.set(true);
+  }
+
+  closeInfoModal(): void {
+    this.showInfoModal.set(false);
   }
 }

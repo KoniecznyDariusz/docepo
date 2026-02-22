@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MoodleEndpoint, StorageService } from '../../service/storage.service';
 import { BackNavigationService } from 'app/service/back-navigation.service';
-import { FooterComponent } from 'app/component/common/footer/footer.component';
+import { FooterComponent } from 'app/component/footer/footer.component';
 
 @Component({
   selector: 'app-moodle-selection-panel',

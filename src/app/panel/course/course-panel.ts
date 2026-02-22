@@ -5,7 +5,7 @@ import { Course } from 'app/model/course.model';
 import { MoodleService } from 'app/service/moodle.service';
 import { ActivatedRoute } from '@angular/router';
 import { BackNavigationService } from 'app/service/back-navigation.service';
-import { FooterComponent } from 'app/component/common/footer/footer.component';
+import { FooterComponent } from 'app/component/footer/footer.component';
 
 @Component({
   selector: 'app-course-panel',

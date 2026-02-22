@@ -1,26 +1,7 @@
 <div class="attendance-panel h-screen flex flex-col bg-gray-900 text-white">
   <!-- Nagłówek -->
   <header class="flex-none p-4 border-b border-gray-700 bg-gray-800 shadow-md z-20">
-    <div class="flex justify-between items-start mb-2">
-      <div>
-        <h3 class="text-sm text-gray-400 font-medium">{{ instructor }}</h3>
-        <h1 class="text-xl font-bold text-blue-400 leading-tight">{{ course?.name }}</h1>
-      </div>
-      <!-- Przycisk powrotu (przeniesiony na stałe w prawym dolnym rogu) -->
-    </div>
-    
-    <div class="flex justify-between items-end mt-2">
-      <h2 class="text-lg font-semibold text-gray-200">{{ group?.name }}</h2>
-      <div class="text-right">
-        <span class="text-xs text-gray-500 block">Godzina zajęć</span>
-        @if (currentClassDate) {
-          <span class="text-lg text-green-400 font-mono font-bold">{{ currentClassDate.startTime | date:'HH:mm' }} - {{ currentClassDate.endTime | date:'HH:mm' }}</span>
-          <p class="text-xs text-gray-400 mt-1">{{ currentClassDate.description }}</p>
-        } @else {
-          <span class="text-lg text-red-400 font-mono">Brak zajęć</span>
-        }
-      </div>
-    </div>
+    <h2 class="text-lg font-semibold text-gray-200">{{ group?.name || '-' }}</h2>
   </header>
 
   <!-- Lista studentów (zajmuje pozostałą przestrzeń) -->
@@ -28,5 +9,14 @@
     <app-student-list [groupId]="group?.id" [classDateId]="currentClassDate?.id" [selectedStudentId]="selectedStudentId"></app-student-list>
   </main>
 
-  <app-footer [backUrl]="'/groups/' + course?.id"></app-footer>
+  <app-footer [backUrl]="'/groups/' + course?.id" [showInfoButton]="true" (infoClick)="openInfoModal()"></app-footer>
+
+  <app-info-attendance
+    [show]="showInfoModal()"
+    [instructor]="instructor"
+    [course]="course"
+    [group]="group"
+    [classDate]="currentClassDate"
+    (close)="closeInfoModal()">
+  </app-info-attendance>
 </div>

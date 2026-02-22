@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { BackButtonComponent } from '../back-button/back-button.component';
+import { BackButtonComponent } from '../common/back-button/back-button.component';
 
 @Component({
   selector: 'app-footer',

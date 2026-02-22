@@ -12,8 +12,8 @@ import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { SolutionSettings } from 'app/setting/solution.settings';
-import { FooterComponent } from 'app/component/common/footer/footer.component';
-import { InfoTaskComponent } from 'app/component/common/info/info-task/info-task.component';
+import { FooterComponent } from 'app/component/footer/footer.component';
+import { InfoTaskComponent } from 'app/component/info/info-task/info-task.component';
 import { PointsWheelComponent } from 'app/component/common/points-wheel/points-wheel.component';
 
 @Component({
