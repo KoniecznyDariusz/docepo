@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { MoodleEndpoint, StorageService } from '../../service/storage.service';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
+import { AuthMoodleService } from 'app/service/auth-moodle.service';
 
 @Component({
   selector: 'app-moodle-selection-panel',
@@ -17,6 +18,7 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
   private router = inject(Router);
   private storageService = inject(StorageService);
   private backNav = inject(BackNavigationService);
+  private authService = inject(AuthMoodleService);
 
   moodleUrl: string = '';
   endpointSelection: string = '';
@@ -26,6 +28,15 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     this.backNav.setBackUrl(null);
+    
+    // Sprawdź czy użytkownik jest już zalogowany
+    const isAuthenticated = await this.authService.isAuthenticated();
+    if (isAuthenticated) {
+      // Jeśli jest zalogowany, przekieruj od razu na kursy
+      await this.router.navigate(['/course']);
+      return;
+    }
+
     const [storedUrl, endpoints] = await Promise.all([
       this.storageService.getMoodleUrl(),
       this.storageService.getMoodleEndpoints()
@@ -60,13 +71,23 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     try {
+      // Zapisz URL Moodle
       await this.storageService.setMoodleUrl(this.moodleUrl.trim());
-      const navigated = await this.router.navigate(['/course']);
-      if (!navigated) {
-        this.errorMessage = 'Nie udało się przejść dalej. Spróbuj ponownie.';
+      
+      // Rozpocznij flow OAuth2 - otworzy przeglądarkę do logowania
+      const success = await this.authService.login(this.moodleUrl.trim());
+      
+      if (success) {
+        // Logowanie powiodło się - przekieruj na kursy
+        const navigated = await this.router.navigate(['/course']);
+        if (!navigated) {
+          this.errorMessage = 'Nie udało się przejść dalej. Spróbuj ponownie.';
+        }
+      } else {
+        this.errorMessage = 'Logowanie nie powiodło się. Spróbuj ponownie.';
       }
     } catch (error) {
-      this.errorMessage = 'Błąd przy zapisywaniu adresu. Spróbuj ponownie.';
+      this.errorMessage = 'Błąd podczas logowania. Spróbuj ponownie.';
       console.error(error);
     } finally {
       this.isLoading = false;

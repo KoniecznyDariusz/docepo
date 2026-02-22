@@ -77,6 +77,7 @@ W danych testowych w `moodle.service.ts` przygotować:
 ### 8) Zasady pracy AI w tym repo
 - Proponuj minimalne, konkretne zmiany zgodne z aktualną architekturą.
 - Nie zmieniaj nazw i struktury modułów bez wyraźnej potrzeby.
+- preferuj instalowanie modułów nad własną implementację skomplikowanych funkcjonalności (np. do obsługi uwierzytelniania)
 - Dla nowych funkcji najpierw aktualizuj modele i serwisy danych, potem panele UI.
 - W rozwiązaniach uwzględniaj „Deep Scan” (analiza wpływu na routing, modele, serwisy i panele).
 

@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Course } from 'app/model/course.model';
 import { MoodleService } from 'app/service/moodle.service';
 import { ActivatedRoute } from '@angular/router';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
+import { AuthMoodleService } from 'app/service/auth-moodle.service';
 
 @Component({
   selector: 'app-course-panel',
@@ -22,7 +23,9 @@ export class CoursePanel implements OnInit, OnDestroy {
   constructor(
     private eportalService: MoodleService,
     private route: ActivatedRoute,
-    private backNav: BackNavigationService
+    private backNav: BackNavigationService,
+    private authService: AuthMoodleService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -46,6 +49,14 @@ export class CoursePanel implements OnInit, OnDestroy {
 
   onBack(): void {
     this.backNav.goBack(this.route.snapshot);
+  }
+
+  async onLogout(): Promise<void> {
+    const confirmed = confirm('Czy na pewno chcesz się wylogować?');
+    if (!confirmed) return;
+
+    await this.authService.logout();
+    await this.router.navigate(['/moodle-selection']);
   }
 
   private evaluateCourseHighlight(courseId: string) {
