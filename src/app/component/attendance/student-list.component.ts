@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, signal, effect, input } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, signal, effect, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { StudentRowComponent } from './student-row.component';
@@ -42,8 +42,10 @@ export class StudentListComponent {
   groupId = input<string | undefined>();
   classDateId = input<string | undefined>();
   selectedStudentId = input<string | null>(null);
+  selectedStudentHandled = output<void>();
   // Signals (Angular 21)
   students = signal<Student[]>([]);
+  private lastAutoScrolledSelectedId = signal<string | null>(null);
 
   constructor() {
     // Watch groupId input changes
@@ -76,11 +78,25 @@ export class StudentListComponent {
     effect(() => {
       const selectedId = this.selectedStudentId();
       const studentList = this.students();
-      if (selectedId && studentList.length > 0) {
-        const index = studentList.findIndex(s => s.id === selectedId);
-        if (index >= 0) {
-          this.scrollToStudent(index);
-        }
+
+      if (!selectedId) {
+        this.lastAutoScrolledSelectedId.set(null);
+        return;
+      }
+
+      if (studentList.length === 0) {
+        return;
+      }
+
+      if (this.lastAutoScrolledSelectedId() === selectedId) {
+        return;
+      }
+
+      const index = studentList.findIndex(s => s.id === selectedId);
+      if (index >= 0) {
+        this.scrollToStudent(index);
+        this.lastAutoScrolledSelectedId.set(selectedId);
+        this.selectedStudentHandled.emit();
       }
     });
   }

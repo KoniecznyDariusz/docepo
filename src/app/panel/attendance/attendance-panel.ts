@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
@@ -28,6 +28,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
   selectedStudentId: string | null = null;
 
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private eportalService = inject(MoodleService);
   private backNav = inject(BackNavigationService);
 
@@ -73,5 +74,18 @@ export class AttendancePanel implements OnInit, OnDestroy {
 
   closeInfoModal(): void {
     this.showInfoModal.set(false);
+  }
+
+  onSelectedStudentHandled(): void {
+    if (!this.selectedStudentId) {
+      return;
+    }
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { selected: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 }
