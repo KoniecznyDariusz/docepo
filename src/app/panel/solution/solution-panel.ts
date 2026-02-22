@@ -15,11 +15,12 @@ import { SolutionSettings } from 'app/setting/solution.settings';
 import { FooterComponent } from 'app/component/footer/footer.component';
 import { InfoTaskComponent } from 'app/component/info/info-task/info-task.component';
 import { PointsWheelComponent } from 'app/component/common/points-wheel/points-wheel.component';
+import { HeaderComponent } from 'app/component/header/header.component';
 
 @Component({
   selector: 'app-solution-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, FooterComponent, InfoTaskComponent, PointsWheelComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, InfoTaskComponent, PointsWheelComponent, HeaderComponent],
   templateUrl: './solution-panel.html',
   styleUrls: ['./solution-panel.css']
 })

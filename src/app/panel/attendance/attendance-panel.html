@@ -1,8 +1,5 @@
 <div class="attendance-panel h-screen flex flex-col bg-gray-900 text-white">
-  <!-- Nagłówek -->
-  <header class="flex-none p-4 border-b border-gray-700 bg-gray-800 shadow-md z-20">
-    <h2 class="text-lg font-semibold text-gray-200">{{ group?.name || '-' }}</h2>
-  </header>
+  <app-header [title]="group?.name"></app-header>
 
   <!-- Lista studentów (zajmuje pozostałą przestrzeń) -->
   <main class="flex-1 overflow-hidden relative main-content">

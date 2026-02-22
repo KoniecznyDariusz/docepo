@@ -10,11 +10,12 @@ import { StudentTasklistsComponent } from 'app/component/student/student-tasklis
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
 import { InfoStudentComponent } from 'app/component/info/info-student/info-student.component';
+import { HeaderComponent } from 'app/component/header/header.component';
 
 @Component({
   selector: 'app-student-panel',
   standalone: true,
-  imports: [CommonModule, StudentAttendancesComponent, StudentTasklistsComponent, FooterComponent, InfoStudentComponent],
+  imports: [CommonModule, StudentAttendancesComponent, StudentTasklistsComponent, FooterComponent, InfoStudentComponent, HeaderComponent],
   templateUrl: './student-panel.html',
   styleUrls: ['./student-panel.css']
 })

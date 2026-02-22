@@ -7,11 +7,12 @@ import { ClassDate } from 'app/model/classDate.model';
 import { GroupListComponent } from 'app/component/group-list/group-list.component';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
+import { HeaderComponent } from 'app/component/header/header.component';
 
 @Component({
   selector: 'app-group-panel',
   standalone: true,
-  imports: [CommonModule, GroupListComponent, FooterComponent],
+  imports: [CommonModule, GroupListComponent, FooterComponent, HeaderComponent],
   templateUrl: './group-panel.html',
   styleUrls: ['./group-panel.css']
 })

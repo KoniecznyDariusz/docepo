@@ -9,11 +9,12 @@ import { StudentListComponent } from 'app/component/attendance/student-list.comp
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
 import { InfoAttendanceComponent } from 'app/component/info/info-attendance/info-attendance.component';
+import { HeaderComponent } from 'app/component/header/header.component';
 
 @Component({
   selector: 'app-attendance-panel',
   standalone: true,
-  imports: [CommonModule, StudentListComponent, FooterComponent, InfoAttendanceComponent],
+  imports: [CommonModule, StudentListComponent, FooterComponent, InfoAttendanceComponent, HeaderComponent],
   templateUrl: './attendance-panel.html',
   styleUrl: './attendance-panel.css'
 })

@@ -1,7 +1,5 @@
 <div class="group-panel-container h-screen flex flex-col bg-gray-900 text-white">
-  <header class="flex-none p-4 border-b border-gray-700 bg-gray-800 shadow-md z-20">
-    <h2 class="text-lg font-semibold text-gray-200">{{ courseName || '-' }}</h2>
-  </header>
+  <app-header [title]="courseName"></app-header>
 
   <app-group-list [groups]="groups" [groupClassDates]="groupClassDates" [groupAttendanceEnabled]="groupAttendanceEnabled"></app-group-list>
 
