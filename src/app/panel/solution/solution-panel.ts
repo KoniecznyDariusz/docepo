@@ -307,7 +307,7 @@ export class SolutionPanel implements OnInit {
 
   openPointsEditor(): void {
     if (this.solution) {
-      this.editedPoints.set(this.solution.points);
+      this.editedPoints.set(this.solution.points ?? 0);
       this.showPointsModal.set(true);
     }
   }

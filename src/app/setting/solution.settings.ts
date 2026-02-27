@@ -1,9 +1,14 @@
 export class SolutionSettings {
+  private static normalizeStatus(status: string): string {
+    return status === '-' ? '' : status;
+  }
+
   static getAvailableStatuses(): string[] {
     return ['', 'C', 'G', 'W', 'U', 'P', 'N'];
   }
 
   static getStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const labels: Record<string, string> = {
       '': '-',
       'C': 'C',
@@ -13,11 +18,12 @@ export class SolutionSettings {
       'P': 'P',
       'N': 'N'
     };
-    return labels[status] || '?';
+    return labels[normalizedStatus] || '?';
   }
 
   static getStatusBadgeColor(status: string): string {
-    switch (status) {
+    const normalizedStatus = this.normalizeStatus(status);
+    switch (normalizedStatus) {
       case 'G':
         return 'bg-green-300';
       case 'W':
@@ -36,7 +42,9 @@ export class SolutionSettings {
   }
 
   static getStatusTextColor(status: string): string {
-    switch (status) {
+    const normalizedStatus = this.normalizeStatus(status);
+
+    switch (normalizedStatus) {
       case 'G':
         return 'text-green-300';
       case 'W':
@@ -54,8 +62,8 @@ export class SolutionSettings {
     }
   }
 
-  static getSolutionFillColor(points: number, maxPoints: number): string {
-    if (maxPoints <= 0) return 'rgb(71, 85, 105)'; // slate-600
+  static getSolutionFillColor(points: number | null, maxPoints: number): string {
+    if (points === null || maxPoints <= 0) return 'rgb(71, 85, 105)'; // slate-600
     const percentage = (points / maxPoints) * 100;
 
     if (percentage === 100) return 'rgb(34, 197, 94)';     // green-500
@@ -67,6 +75,7 @@ export class SolutionSettings {
   }
 
   static getStatusDescription(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const descriptions: Record<string, string> = {
       '': '- Not graded / Nie ocenione',
       'C': 'C - Comment / Komentarz (coś trzeba poprawić)',
@@ -76,6 +85,6 @@ export class SolutionSettings {
       'P': 'P - Positive / Pozytywnie zakończone',
       'N': 'N - Negative / Nie rozwiązane'
     };
-    return descriptions[status] || descriptions[''];
+    return descriptions[normalizedStatus] || descriptions[''];
   }
 }

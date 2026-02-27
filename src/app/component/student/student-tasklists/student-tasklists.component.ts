@@ -56,7 +56,27 @@ export class StudentTasklistsComponent {
   getPointsPercentage(solution: Solution): number {
     const task = this.getTask(solution.taskId);
     if (!task || task.maxPoints === 0) return 0;
-    return Math.min(100, (solution.points / task.maxPoints) * 100);
+    const points = solution.points ?? 0;
+    return Math.min(100, (points / task.maxPoints) * 100);
+  }
+
+  getTotalPoints(): number {
+    return this.solutions().reduce((sum, sol) => sum + (sol.points ?? 0), 0);
+  }
+
+  getMaxTotalPoints(): number {
+    return this.solutions().reduce((sum, sol) => {
+      const task = this.getTask(sol.taskId);
+      return sum + (task?.maxPoints || 0);
+    }, 0);
+  }
+
+  getTotalPointsPercentage(): string {
+    const max = this.getMaxTotalPoints();
+    if (max === 0) return '0';
+    const total = this.getTotalPoints();
+    const percentage = (total / max) * 100;
+    return (Math.round(percentage * 10) / 10).toLocaleString('pl-PL');
   }
 
   openSolutionDetail(solution: Solution): void {

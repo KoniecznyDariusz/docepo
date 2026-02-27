@@ -301,6 +301,12 @@ export class MoodleService {
       });
     });
 
+    attendances.forEach(a => {
+      const isCurrent = this.isCurrentClassDate(a.classDateId);
+      if (isCurrent) {
+        a.status =  null; // Jeśli jest bieżący, ustaw na null (nie sprawdzony)
+      }
+    });
     return attendances;
   }
 
@@ -323,28 +329,32 @@ export class MoodleService {
     const now = new Date();
 
     this.tasks.forEach((task, taskIdx) => {
+      const isLastTask = taskIdx === this.tasks.length - 1;
+
       this.students.forEach((student, studentIdx) => {
         // Losowo przydzielaj status
         const statusIdx = (taskIdx + studentIdx * 2) % solutionStatuses.length;
-        const status = solutionStatuses[statusIdx];
+        const status = isLastTask ? '-' : solutionStatuses[statusIdx];
         
         // Liczba punktów zależy od statusu i maxPoints zadania
-        let points = 0;
-        if (status === 'P') {
-          points = task.maxPoints; // 100%
-        } else if (status === 'G') {
-          points = Math.floor(task.maxPoints * (0.75 + Math.random() * 0.25)); // 75-100%
-        } else if (status === 'U') {
-          points = Math.floor(task.maxPoints * (0.65 + Math.random() * 0.3)); // 65-95%
-        } else if (status === 'C') {
-          points = Math.floor(task.maxPoints * (0.3 + Math.random() * 0.35)); // 30-65%
-        } else if (status === 'W') {
-          points = Math.floor(task.maxPoints * (0.4 + Math.random() * 0.4)); // 40-80%
+        let points: number | null = null;
+        if (!isLastTask) {
+          if (status === 'P') {
+            points = task.maxPoints; // 100%
+          } else if (status === 'G') {
+            points = Math.floor(task.maxPoints * (0.75 + Math.random() * 0.25)); // 75-100%
+          } else if (status === 'U') {
+            points = Math.floor(task.maxPoints * (0.65 + Math.random() * 0.3)); // 65-95%
+          } else if (status === 'C') {
+            points = Math.floor(task.maxPoints * (0.3 + Math.random() * 0.35)); // 30-65%
+          } else if (status === 'W') {
+            points = Math.floor(task.maxPoints * (0.4 + Math.random() * 0.4)); // 40-80%
+          }
         }
         // 'N' (negative) i '' (pusty) żadnych punktów
 
         // Data wykonania: losowo w ostatnich 30 dniach dla zatwierdzonych, w przyszłości dla nieoce nionych
-        const completedAt = status === '' 
+        const completedAt = (status === '' || status === '-')
           ? new Date(now.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) // przyszłość
           : new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000); // przeszłość
 
@@ -354,7 +364,7 @@ export class MoodleService {
           taskId: task.id,
           completedAt,
           points,
-          comment: comments[statusIdx],
+          comment: isLastTask ? '' : comments[statusIdx],
           status
         });
         id++;

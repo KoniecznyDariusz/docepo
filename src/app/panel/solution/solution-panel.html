@@ -15,7 +15,7 @@
             <p class="text-sm text-gray-400">Punkty</p>
             <div class="flex items-center justify-between">
               <p class="text-base font-semibold">
-                {{ solution.points }} / {{ task.maxPoints }}
+                {{ solution.points ?? '-' }} / {{ task.maxPoints }}
               </p>
               <button 
                 type="button" 
@@ -28,7 +28,7 @@
             <div class="mt-2 w-full bg-gray-700 rounded-full h-2.5">
               <div 
                 class="h-2.5 rounded-full transition-all duration-300"
-                [style.width.%]="(solution.points / task.maxPoints) * 100"
+                [style.width.%]="((solution.points ?? 0) / task.maxPoints) * 100"
                 [style.background-color]="solutionSettings.getSolutionFillColor(solution.points, task.maxPoints)">
               </div>
             </div>
