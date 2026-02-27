@@ -16,11 +16,12 @@ import { FooterComponent } from 'app/component/footer/footer.component';
 import { InfoTaskComponent } from 'app/component/info/info-task/info-task.component';
 import { PointsWheelComponent } from 'app/component/common/points-wheel/points-wheel.component';
 import { HeaderComponent } from 'app/component/header/header.component';
+import { I18nPipe } from '../../i18n/i18n.pipe';
 
 @Component({
   selector: 'app-solution-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, FooterComponent, InfoTaskComponent, PointsWheelComponent, HeaderComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, InfoTaskComponent, PointsWheelComponent, HeaderComponent, I18nPipe],
   templateUrl: './solution-panel.html',
   styleUrls: ['./solution-panel.css']
 })

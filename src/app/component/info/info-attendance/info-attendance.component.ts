@@ -3,11 +3,12 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Course } from 'app/model/course.model';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
+import { I18nPipe } from '../../../i18n/i18n.pipe';
 
 @Component({
   selector: 'app-info-attendance',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [CommonModule, DatePipe, I18nPipe],
   templateUrl: './info-attendance.component.html',
   styleUrls: ['./info-attendance.component.css']
 })

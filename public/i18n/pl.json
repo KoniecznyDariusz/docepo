@@ -1,0 +1,46 @@
+{
+  "common": {
+    "back": "Wstecz",
+    "info": "Info",
+    "loading": "Ładowanie danych...",
+    "date": "Data",
+    "course": "Kurs",
+    "group": "Grupa",
+    "student": "Student",
+    "save": "Zapisz",
+    "cancel": "Anuluj"
+  },
+  "attendance": {
+    "noDataForGroup": "Brak danych frekwencji dla tej grupy.",
+    "sessionDetails": "Szczegóły terminów",
+    "session": "Termin",
+    "sessionFallback": "Termin {{date}}",
+    "statusLabel": "Status obecności",
+    "instructor": "Prowadzący",
+    "classTime": "Godzina zajęć",
+    "noClass": "Brak zajęć",
+    "status": {
+      "present": "Obecny",
+      "absent": "Nieobecny",
+      "late": "Spóźniony",
+      "missing": "Brak danych",
+      "unknown": "Nieznany"
+    }
+  },
+  "student": {
+    "tasks": {
+      "title": "Rozwiązania",
+      "noSolutionsForCourse": "Brak rozwiązań dla tego kursu."
+    }
+  },
+  "solution": {
+    "completedAt": "Data wykonania",
+    "points": "Punkty",
+    "status": "Stan",
+    "comment": "Komentarz",
+    "editPoints": "Edytuj punkty",
+    "editStatus": "Edytuj stan",
+    "editComment": "Edytuj komentarz",
+    "deleteComment": "Usuń cały komentarz"
+  }
+}

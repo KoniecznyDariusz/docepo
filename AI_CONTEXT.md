@@ -69,6 +69,8 @@ W danych testowych w `moodle.service.ts` przygotować:
 - Angular 21+: używaj nowoczesnych mechanizmów (`signals`, `input()`, `computed()`, `effect()`, nowy control flow).
 - Trwałe przechowywanie danych: `@capacitor/preferences`.
 - Routing: przekazuj stan przez adresy URL i parametry tras; nie opieraj logiki na stosie historii przeglądarki.
+- Internacjonalizacja: runtime i18n oparty o klucze i zewnętrzne słowniki JSON (`pl`, `en`, docelowo kolejne języki).
+- Teksty UI w kodzie nie powinny być hardcodowane; komponenty mają używać kluczy tłumaczeń.
 
 ### 7) UX i wydajność
 - Priorytet: szybkość i czytelność, nie animacje.
@@ -79,6 +81,7 @@ W danych testowych w `moodle.service.ts` przygotować:
 - Nie zmieniaj nazw i struktury modułów bez wyraźnej potrzeby.
 - Dla nowych funkcji najpierw aktualizuj modele i serwisy danych, potem panele UI.
 - W rozwiązaniach uwzględniaj „Deep Scan” (analiza wpływu na routing, modele, serwisy i panele).
+- Dla zmian UX zależnych od typu zajęć stosuj profile bazowe + override’y (preferencje prowadzącego), zamiast mnożenia osobnych profili.
 
 ### 9) Starter prompt (do wklejenia na start sesji)
 Skopiuj poniższy szablon i uzupełnij sekcję „Zadanie”.
@@ -148,11 +151,11 @@ Ta sekcja jest źródłem prawdy dla AI przy modyfikacji modeli i serwisów.
 - `studentId: string`
 - `taskId: string`
 - `completedAt: Date`
-- `points: number`
+- `points: number | null`
 - `comment: string`
-- `status: '' | 'C' | 'G' | 'W' | 'U' | 'P' | 'N'`
+- `status: '' | '-' | 'C' | 'G' | 'W' | 'U' | 'P' | 'N'`
 
-Uwaga: status „nieocenione” jest obecnie pustym stringiem `''` (w UI może być pokazywany jako `-`).
+Uwaga: status „nieocenione” może być `''` lub `'-'` (w UI prezentowany jako `-`).
 
 ### 13) Kontrakt routingu i nawigacji
 Kanoniczny przepływ ekranów (obecnie używany):
@@ -177,10 +180,29 @@ Zasady:
 
 ### 15) Stan ustaleń (zgodny z aktualnym kodem)
 - Bieżące zajęcia: obowiązuje okno `start zajęć - 5 minut <= teraz <= end zajęć + 15 minut`.
-- Status nieocenione w `Solution.status`: obecnie pusty string `''` (w UI może być pokazywany jako `-`).
+- Status nieocenione w `Solution.status`: `''` lub `'-'` (w UI pokazywany jako `-`).
 - Routing: obowiązuje URL-first (parametry ścieżki + parametry query), bez logiki opartej o historię.
 - Trasy legacy `/panel/...`: działają jako przekierowania kompatybilności do gałęzi kanonicznej.
 - Aktualizacja obecności: wymaga `classDateId` i zapis jest dozwolony tylko dla bieżących zajęć (okno -5/+15 minut).
+
+### 18) Profile prowadzenia zajęć + konfiguracja prowadzącego (target architecture)
+Cel: wspierać różne formy zajęć (np. laboratoria/ćwiczenia) bez eksplozji liczby paneli i profili.
+
+Model konfiguracji:
+- `BaseProfile` – kilka bazowych profili logiki (typ zajęć, przepływ statusów, reguły oceniania, tryb oddawania).
+- `InstructorOverrides` – lekkie preferencje prowadzącego (domyślne statusy, widoczność sekcji, etykiety, kolejność akcji).
+- `GroupConfig` – przypisanie profilu i override’ów do konkretnej grupy.
+
+Rozstrzyganie konfiguracji (merge):
+- `system defaults -> base profile -> instructor overrides -> group explicit overrides`.
+
+Wymienialność paneli:
+- Panel studenta i panel rozwiązania mają być wybierane po `variant` z `ResolvedProfile` (rejestr komponentów + lazy loading).
+
+Internacjonalizacja (i18n):
+- Stosować runtime i18n + klucze (`common.*`, `studentPanel.*`, `solutionPanel.*`, `status.*`, `profile.<id>.*`).
+- Tłumaczenia przechowywać w słownikach JSON; umożliwić korekty językowe bez zmian kodu TS/HTML.
+- Utrzymywać fallback language i walidację brakujących kluczy.
 
 ### 16) Ostatnie zmiany (log sesji AI)
 - Refaktoryzacja logiki statusów do `setting/`:

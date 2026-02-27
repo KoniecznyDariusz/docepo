@@ -1,12 +1,12 @@
 <section class="bg-gray-800 p-4 rounded-md">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold text-blue-300">Rozwiązania</h3>
+    <h3 class="text-lg font-semibold text-blue-300">{{ 'student.tasks.title' | t }}</h3>
     <p class="text-sm text-gray-300">{{ getTotalPoints() }}/{{ getMaxTotalPoints() }} ({{ getTotalPointsPercentage() }}%)</p>
   </div>
 
   <div class="mt-4">
     @if (solutions().length === 0) {
-      <p class="text-sm text-gray-400">Brak rozwiązań dla tego kursu.</p>
+      <p class="text-sm text-gray-400">{{ 'student.tasks.noSolutionsForCourse' | t }}</p>
     } @else {
       <div class="grid grid-cols-3 gap-4 md:grid-cols-4">
         @for (solution of solutions(); track solution.id) {

@@ -7,12 +7,12 @@
       <section class="bg-gray-800 p-4 rounded-md">
         <div class="space-y-3">
           <div>
-            <p class="text-sm text-gray-400">Data wykonania</p>
+            <p class="text-sm text-gray-400">{{ 'solution.completedAt' | t }}</p>
             <p class="text-base font-semibold">{{ solution.completedAt | date: 'yyyy-MM-dd HH:mm' }}</p>
           </div>
 
           <div>
-            <p class="text-sm text-gray-400">Punkty</p>
+            <p class="text-sm text-gray-400">{{ 'solution.points' | t }}</p>
             <div class="flex items-center justify-between">
               <p class="text-base font-semibold">
                 {{ solution.points ?? '-' }} / {{ task.maxPoints }}
@@ -21,7 +21,7 @@
                 type="button" 
                 (click)="openPointsEditor()"
                 class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
-                title="Edytuj punkty">
+                [title]="'solution.editPoints' | t">
                 ✏️
               </button>
             </div>
@@ -35,7 +35,7 @@
           </div>
 
           <div>
-            <p class="text-sm text-gray-400">Stan</p>
+            <p class="text-sm text-gray-400">{{ 'solution.status' | t }}</p>
             <div class="flex items-center justify-between">
               <p [class]="'text-base font-semibold ' + solutionSettings.getStatusTextColor(solution.status || '')">
                 {{ solutionSettings.getStatusDescription(solution.status || '') }}
@@ -44,7 +44,7 @@
                 type="button" 
                 (click)="openStatusEditor()"
                 class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
-                title="Edytuj stan">
+                [title]="'solution.editStatus' | t">
                 ✏️
               </button>
             </div>
@@ -55,7 +55,7 @@
       <!-- Comment Section (full width) -->
       <section class="bg-gray-800 p-4 rounded-md">
         <div class="flex items-center justify-between mb-2">
-          <p class="text-sm text-gray-400">Komentarz</p>
+          <p class="text-sm text-gray-400">{{ 'solution.comment' | t }}</p>
           <div class="flex gap-2 justify-end">
             <!-- Language and Voice buttons with frame -->
             <div class="border border-gray-400 rounded flex flex-col gap-1 px-1 py-1">
@@ -101,7 +101,7 @@
                   type="button" 
                   (click)="openCommentEditor()"
                   class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
-                  title="Edytuj komentarz">
+                  [title]="'solution.editComment' | t">
                   ✏️
                 </button>
               </div>
@@ -124,7 +124,7 @@
                   type="button" 
                   (click)="openDeleteModal()"
                   class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-                  title="Usuń cały komentarz">
+                  [title]="'solution.deleteComment' | t">
                   🗑️
                 </button>
               </div>
@@ -136,7 +136,7 @@
 
       <!-- TODO: Edycja rozwiązania - punkty, status, komentarz -->
     } @else {
-      <p class="text-gray-400">Ładowanie danych...</p>
+      <p class="text-gray-400">{{ 'common.loading' | t }}</p>
     }
   </main>
 

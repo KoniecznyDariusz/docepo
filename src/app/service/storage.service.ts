@@ -11,6 +11,7 @@ export interface MoodleEndpoint {
 })
 export class StorageService {
   private readonly moodleEndpointsKey = 'moodleEndpoints';
+  private readonly languageKey = 'language';
   private readonly defaultMoodleEndpoints: MoodleEndpoint[] = [
     {
       name: 'ePortal - PWr',
@@ -81,5 +82,13 @@ export class StorageService {
 
   async setMoodleEndpoints(endpoints: MoodleEndpoint[]): Promise<void> {
     await this.setStorage(this.moodleEndpointsKey, endpoints);
+  }
+
+  async getLanguage(): Promise<string | null> {
+    return this.getStorage(this.languageKey);
+  }
+
+  async setLanguage(language: string): Promise<void> {
+    await this.setStorage(this.languageKey, language);
   }
 }

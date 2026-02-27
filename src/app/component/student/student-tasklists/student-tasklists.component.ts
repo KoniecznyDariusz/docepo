@@ -5,11 +5,12 @@ import { MoodleService } from 'app/service/moodle.service';
 import { Solution } from 'app/model/solution.model';
 import { Task } from 'app/model/task.model';
 import { SolutionSettings } from 'app/setting/solution.settings';
+import { I18nPipe } from '../../../i18n/i18n.pipe';
 
 @Component({
   selector: 'app-student-tasklists',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, I18nPipe],
   templateUrl: './student-tasklists.component.html',
   styleUrls: ['./student-tasklists.component.css']
 })

@@ -1,0 +1,46 @@
+{
+  "common": {
+    "back": "Back",
+    "info": "Info",
+    "loading": "Loading data...",
+    "date": "Date",
+    "course": "Course",
+    "group": "Group",
+    "student": "Student",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "attendance": {
+    "noDataForGroup": "No attendance data for this group.",
+    "sessionDetails": "Session details",
+    "session": "Session",
+    "sessionFallback": "Session {{date}}",
+    "statusLabel": "Attendance status",
+    "instructor": "Instructor",
+    "classTime": "Class time",
+    "noClass": "No class",
+    "status": {
+      "present": "Present",
+      "absent": "Absent",
+      "late": "Late",
+      "missing": "No data",
+      "unknown": "Unknown"
+    }
+  },
+  "student": {
+    "tasks": {
+      "title": "Solutions",
+      "noSolutionsForCourse": "No solutions for this course."
+    }
+  },
+  "solution": {
+    "completedAt": "Completion date",
+    "points": "Points",
+    "status": "Status",
+    "comment": "Comment",
+    "editPoints": "Edit points",
+    "editStatus": "Edit status",
+    "editComment": "Edit comment",
+    "deleteComment": "Delete full comment"
+  }
+}

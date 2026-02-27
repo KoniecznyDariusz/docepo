@@ -17,13 +17,13 @@ export class AttendanceSettings {
     return status == null;
   }
 
-  static getStatusLabel(status: AttendanceStatus): string {
+  static getStatusLabelKey(status: AttendanceStatus): string {
     const labels: Record<Exclude<AttendanceStatus, null>, string> = {
-      P: 'Obecny',
-      A: 'Nieobecny',
-      L: 'Spóźniony'
+      P: 'attendance.status.present',
+      A: 'attendance.status.absent',
+      L: 'attendance.status.late'
     };
 
-    return status ? labels[status] || status : 'Brak danych';
+    return status ? labels[status] || 'attendance.status.unknown' : 'attendance.status.missing';
   }
 }

@@ -4,11 +4,13 @@ import { MoodleService } from 'app/service/moodle.service';
 import { Attendance } from 'app/model/attendance.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 import { AttendanceSettings } from 'app/setting/attendance.settings';
+import { I18nPipe } from '../../../i18n/i18n.pipe';
+import { I18nService } from '../../../service/i18n.service';
 
 @Component({
   selector: 'app-student-attendances',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, I18nPipe],
   templateUrl: './student-attendances.component.html',
   styleUrls: ['./student-attendances.component.css']
 })
@@ -19,6 +21,7 @@ export class StudentAttendancesComponent {
   currentClassDateId = input<string | undefined>();
 
   private moodle = inject(MoodleService);
+  private i18n = inject(I18nService);
   attendances = signal<Attendance[]>([]);
   classDatesMap = signal<Record<string,{date: string, description: string}>>({});
   
@@ -49,7 +52,7 @@ export class StudentAttendancesComponent {
           const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
           map[cd.id] = {
             date: dateStr,
-            description: cd.description || `Termin ${dateStr}`
+            description: cd.description || this.i18n.t('attendance.sessionFallback', { date: dateStr })
           };
         });
         this.classDatesMap.set(map);
