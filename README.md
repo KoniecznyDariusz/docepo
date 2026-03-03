@@ -57,3 +57,13 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Modern Angular Checklist (team)
+
+Before creating a PR, verify:
+
+- Use `signal`, `computed`, `effect` for UI/local state where it makes sense.
+- Use `input()` / `output()` for component APIs (avoid `@Input/@Output`).
+- Prefer DI via `inject()` (unless constructor DI is clearly justified).
+- Use modern template control flow (`@if`, `@for`, `@switch`) and read signals with `mySignal()`.
+- Ensure `npm run build` passes with no new TypeScript/template errors.

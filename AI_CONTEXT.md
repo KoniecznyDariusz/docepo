@@ -70,6 +70,14 @@ W danych testowych w `moodle.service.ts` przygotować:
 - Trwałe przechowywanie danych: `@capacitor/preferences`.
 - Routing: przekazuj stan przez adresy URL i parametry tras; nie opieraj logiki na stosie historii przeglądarki.
 
+#### 6.1 Standard stylu Angular (obowiązkowy)
+- **Signals-first**: stan UI i lokalny stan komponentów/paneli zapisuj przez `signal()` i pochodne `computed()`.
+- **Inputs/Outputs**: używaj wyłącznie funkcyjnych API `input()` / `output()`; nie używaj dekoratorów `@Input` / `@Output`.
+- **DI przez `inject()`**: preferuj `inject()` zamiast constructor DI w komponentach, panelach i serwisach, o ile nie ma istotnego powodu inaczej.
+- **Template + signals**: w template odczytuj sygnały przez `mySignal()` i utrzymuj zgodność z nowym control flow (`@if`, `@for`, `@switch`).
+- **Mutacje obiektów**: przy stanie trzymanym w sygnałach preferuj niemutowalne aktualizacje (`set`/`update`) zamiast mutacji in-place.
+- **RxJS tam, gdzie pasuje**: HTTP i strumienie asynchroniczne pozostają w RxJS; sygnały służą do stanu prezentacji i lokalnego stanu aplikacji.
+
 ### 7) UX i wydajność
 - Priorytet: szybkość i czytelność, nie animacje.
 - Animacje tylko tam, gdzie realnie wzmacniają informację (np. przesuwanie listy studentów).
@@ -80,6 +88,7 @@ W danych testowych w `moodle.service.ts` przygotować:
 - preferuj instalowanie modułów nad własną implementację skomplikowanych funkcjonalności (np. do obsługi uwierzytelniania)
 - Dla nowych funkcji najpierw aktualizuj modele i serwisy danych, potem panele UI.
 - W rozwiązaniach uwzględniaj „Deep Scan” (analiza wpływu na routing, modele, serwisy i panele).
+- Domyślny styl kodu: modern Angular (`signals` + `input/output` + `inject`) wszędzie, gdzie ma to sens.
 
 ### 9) Starter prompt (do wklejenia na start sesji)
 Skopiuj poniższy szablon i uzupełnij sekcję „Zadanie”.
@@ -248,4 +257,12 @@ Potwierdzić/ustawić uprawnienia roli dla konta integracyjnego:
 3) Przypisać konto integracyjne do właściwych kursów/roli.
 4) Wygenerować token i przekazać bezpiecznym kanałem.
 5) Wykonać testy end-to-end: kursy → grupy → obecności (odczyt/zapis) → zadania/rozwiązania.
+
+### 18) Checklista PR (modern Angular)
+Przed zamknięciem zadania AI powinno potwierdzić:
+1) Stan UI i lokalny stan komponentów używa `signals` (`signal`, `computed`, `effect`) tam, gdzie ma to sens.
+2) Publiczne API komponentów używa `input()` i `output()` (bez `@Input/@Output`).
+3) DI używa `inject()` (chyba że istnieje jasny powód pozostawienia konstruktora).
+4) Template używa nowego control flow (`@if/@for/@switch`) i odczytu sygnałów przez `mySignal()`.
+5) Po zmianach przechodzi `npm run build` i nie ma nowych błędów TypeScript/template.
 
