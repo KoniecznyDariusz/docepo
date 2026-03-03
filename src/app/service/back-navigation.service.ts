@@ -1,25 +1,24 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 
 @Injectable({ providedIn: 'root' })
 export class BackNavigationService {
-  private backUrl: string | null = null;
-
-  constructor(private readonly router: Router) {}
+  private readonly router = inject(Router);
+  private backUrl = signal<string | null>(null);
 
   setBackUrl(url: string | null): void {
-    this.backUrl = url;
+    this.backUrl.set(url);
   }
 
   clearBackUrl(): void {
-    this.backUrl = null;
+    this.backUrl.set(null);
   }
 
   goBack(snapshot?: ActivatedRouteSnapshot): void {
-    if (this.backUrl) {
-      this.router.navigateByUrl(this.backUrl);
+    if (this.backUrl()) {
+      this.router.navigateByUrl(this.backUrl()!);
       return;
     }
 

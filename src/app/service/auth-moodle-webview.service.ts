@@ -1,8 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { Browser } from '@capacitor/browser';
 import { StorageService } from './storage.service';
-import { BehaviorSubject } from 'rxjs';
 
 /**
  * Alternatywna implementacja autentykacji dla Moodle
@@ -18,8 +18,8 @@ export class AuthMoodleWebViewService {
   private http = inject(HttpClient);
   private storageService = inject(StorageService);
   
-  private authStateSubject = new BehaviorSubject<boolean>(false);
-  public authState$ = this.authStateSubject.asObservable();
+  authState = signal(false);
+  public authState$ = toObservable(this.authState);
 
   constructor() {
     this.loadAuthState();
@@ -30,7 +30,7 @@ export class AuthMoodleWebViewService {
    */
   private async loadAuthState(): Promise<void> {
     const sessionKey = await this.storageService.getStorage('moodle_session_key');
-    this.authStateSubject.next(!!sessionKey);
+    this.authState.set(!!sessionKey);
   }
 
   /**
@@ -89,7 +89,7 @@ export class AuthMoodleWebViewService {
     
     if (isValid) {
       await this.storageService.setStorage('moodle_ws_token', token);
-      this.authStateSubject.next(true);
+      this.authState.set(true);
       return true;
     }
     
@@ -143,6 +143,6 @@ export class AuthMoodleWebViewService {
   async logout(): Promise<void> {
     await this.storageService.removeStorage('moodle_ws_token');
     await this.storageService.removeStorage('moodle_session_key');
-    this.authStateSubject.next(false);
+    this.authState.set(false);
   }
 }

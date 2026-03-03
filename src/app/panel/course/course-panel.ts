@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, computed, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Course } from 'app/model/course.model';
@@ -15,6 +15,12 @@ import { AuthMoodleService } from 'app/service/auth-moodle.service';
   styleUrl: './course-panel.css',
 })
 export class CoursePanel implements OnInit, OnDestroy {
+  private eportalService = inject(MoodleService);
+  private route = inject(ActivatedRoute);
+  private backNav = inject(BackNavigationService);
+  private authService = inject(AuthMoodleService);
+  private router = inject(Router);
+
   courses = signal<Course[]>([]);
   courseHighlighted = signal<{ [id: string]: boolean }>({});
   currentUser = signal<MoodleCurrentUser | null>(null);
@@ -22,14 +28,6 @@ export class CoursePanel implements OnInit, OnDestroy {
   coursesErrorMessage = signal('');
   isLoadingData = signal(true);
   private loadingTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
-
-  constructor(
-    private eportalService: MoodleService,
-    private route: ActivatedRoute,
-    private backNav: BackNavigationService,
-    private authService: AuthMoodleService,
-    private router: Router
-  ) {}
 
   ngOnInit(): void {
     this.backNav.setBackUrl('/moodle-selection');

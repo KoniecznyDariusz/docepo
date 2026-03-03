@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { BackNavigationService } from './service/back-navigation.service';
 import { Capacitor } from '@capacitor/core';
@@ -18,14 +18,12 @@ import type { PluginListenerHandle } from '@capacitor/core';
   `]
 })
 export class App implements OnInit, OnDestroy {
+  private readonly router = inject(Router);
+  private readonly backNav = inject(BackNavigationService);
+
   protected readonly title = signal('DocEpo');
 
   private backButtonListener?: PluginListenerHandle;
-
-  constructor(
-    private readonly router: Router,
-    private readonly backNav: BackNavigationService
-  ) {}
 
   async ngOnInit(): Promise<void> {
     await this.setupBackButton();

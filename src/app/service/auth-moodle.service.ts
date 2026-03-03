@@ -1,9 +1,10 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Browser } from '@capacitor/browser';
 import { App, URLOpenListenerEvent } from '@capacitor/app';
 import { StorageService } from './storage.service';
-import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import * as CryptoJS from 'crypto-js';
 
 export interface MoodleTokenData {
@@ -29,8 +30,8 @@ export class AuthMoodleService {
   private http = inject(HttpClient);
   private storageService = inject(StorageService);
   
-  private authStateSubject = new BehaviorSubject<boolean>(false);
-  public authState$ = this.authStateSubject.asObservable();
+  authState = signal(false);
+  public authState$ = toObservable(this.authState);
   
   private currentAuthConfig: MoodleAuthConfig | null = null;
   private authCallbackResolver: ((value: { code: string; state: string } | null) => void) | null = null;
@@ -59,7 +60,7 @@ export class AuthMoodleService {
    */
   private async loadAuthState(): Promise<void> {
     const isAuthenticated = await this.isAuthenticated();
-    this.authStateSubject.next(isAuthenticated);
+    this.authState.set(isAuthenticated);
   }
 
   /**
@@ -80,7 +81,7 @@ export class AuthMoodleService {
       }
 
       await this.storageService.setStorage('moodle_ws_token', normalizedToken);
-      this.authStateSubject.next(true);
+      this.authState.set(true);
       console.info('[Auth] Zalogowano tokenem Moodle Web Service.');
       return true;
     } catch (error) {
@@ -160,7 +161,7 @@ export class AuthMoodleService {
 
       // Zapisz token
       await this.saveTokenData(tokenData);
-      this.authStateSubject.next(true);
+      this.authState.set(true);
       console.info('[Auth] Zalogowano przez OAuth2/OIDC.');
 
       // Wyczyść tymczasowe dane
@@ -325,7 +326,7 @@ export class AuthMoodleService {
         };
 
         await this.saveTokenData(newTokenData);
-        this.authStateSubject.next(true);
+        this.authState.set(true);
         return true;
       }
 
@@ -343,7 +344,7 @@ export class AuthMoodleService {
     await this.storageService.removeStorage('moodle_token_data');
     await this.storageService.removeStorage('moodle_ws_token');
     await this.clearOAuthTemporaryData();
-    this.authStateSubject.next(false);
+    this.authState.set(false);
   }
 
   /**
