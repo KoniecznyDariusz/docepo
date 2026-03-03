@@ -188,8 +188,10 @@ Powinno zwrócić:
 
 ### Test 3: Moodle Web Service
 ```bash
-curl "https://eportal.pwr.edu.pl/webservice/rest/server.php?wstoken=YOUR_TOKEN&wsfunction=core_webservice_get_site_info&moodlewsrestformat=json"
+curl "https://eportal-test-lti.pwr.edu.pl/eportal_moodle_4_5/webservice/rest/server.php?wstoken=YOUR_TOKEN&wsfunction=core_webservice_get_site_info&moodlewsrestformat=json"
 ```
+
+W środowisku produkcyjnym użyj hosta `https://eportal.pwr.edu.pl/`.
 
 ---
 
@@ -202,7 +204,7 @@ Po skonfigurowaniu, przekaż deweloperowi:
 3. **Token Endpoint:** `https://login.pwr.edu.pl/auth/realms/pwr.edu.pl/protocol/openid-connect/token`
 4. **Scopes:** `openid profile email`
 5. **PKCE:** Required, S256
-6. **Token Exchange Endpoint** (jeśli zaimplementowany): `https://eportal.pwr.edu.pl/auth/oauth/token`
+6. **Token Exchange Endpoint** (jeśli zaimplementowany): `https://{moodle-host}/auth/oauth/token`
 
 ---
 

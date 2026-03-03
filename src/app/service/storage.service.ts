@@ -1,5 +1,6 @@
 ﻿import { Injectable } from '@angular/core';
 import { Preferences } from '@capacitor/preferences';
+import { environment } from '../../environments/environment';
 
 export interface MoodleEndpoint {
   name: string;
@@ -11,12 +12,7 @@ export interface MoodleEndpoint {
 })
 export class StorageService {
   private readonly moodleEndpointsKey = 'moodleEndpoints';
-  private readonly defaultMoodleEndpoints: MoodleEndpoint[] = [
-    {
-      name: 'ePortal - PWr',
-      url: 'https://eportal.pwr.edu.pl/'
-    }
-  ];
+  private readonly defaultMoodleEndpoints: MoodleEndpoint[] = environment.defaultMoodleEndpoints;
 
   async setStorage(key: string, value: any) {
     await Preferences.set({

@@ -21,6 +21,7 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
   private authService = inject(AuthMoodleService);
 
   moodleUrl: string = '';
+  moodleWsToken: string = '';
   endpointSelection: string = '';
   moodleEndpoints: MoodleEndpoint[] = [];
   isLoading: boolean = false;
@@ -88,6 +89,43 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
       }
     } catch (error) {
       this.errorMessage = 'Błąd podczas logowania. Spróbuj ponownie.';
+      console.error(error);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  async onSubmitWithToken() {
+    if (!this.moodleUrl.trim()) {
+      this.errorMessage = 'Proszę wpisać adres Moodle';
+      return;
+    }
+
+    if (!this.moodleWsToken.trim()) {
+      this.errorMessage = 'Proszę wkleić token Moodle';
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    try {
+      const normalizedUrl = this.moodleUrl.trim();
+      await this.storageService.setMoodleUrl(normalizedUrl);
+
+      const success = await this.authService.loginWithWebServiceToken(normalizedUrl, this.moodleWsToken.trim());
+
+      if (success) {
+        this.moodleWsToken = '';
+        const navigated = await this.router.navigate(['/course']);
+        if (!navigated) {
+          this.errorMessage = 'Nie udało się przejść dalej. Spróbuj ponownie.';
+        }
+      } else {
+        this.errorMessage = 'Token jest nieprawidłowy lub serwer odrzucił autoryzację.';
+      }
+    } catch (error) {
+      this.errorMessage = 'Błąd podczas logowania tokenem. Spróbuj ponownie.';
       console.error(error);
     } finally {
       this.isLoading = false;

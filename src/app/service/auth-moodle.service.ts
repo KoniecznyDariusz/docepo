@@ -58,8 +58,34 @@ export class AuthMoodleService {
    * Ładuje stan autentykacji z storage
    */
   private async loadAuthState(): Promise<void> {
-    const tokenData = await this.getTokenData();
-    this.authStateSubject.next(!!tokenData && !this.isTokenExpired(tokenData));
+    const isAuthenticated = await this.isAuthenticated();
+    this.authStateSubject.next(isAuthenticated);
+  }
+
+  /**
+   * Logowanie przez statyczny token Moodle Web Service (development bez OAuth2)
+   */
+  async loginWithWebServiceToken(moodleUrl: string, wsToken: string): Promise<boolean> {
+    const normalizedUrl = moodleUrl.trim().replace(/\/$/, '');
+    const normalizedToken = wsToken.trim();
+
+    if (!normalizedUrl || !normalizedToken || normalizedToken.length < 20) {
+      return false;
+    }
+
+    try {
+      const isValid = await this.validateWebServiceToken(normalizedUrl, normalizedToken);
+      if (!isValid) {
+        return false;
+      }
+
+      await this.storageService.setStorage('moodle_ws_token', normalizedToken);
+      this.authStateSubject.next(true);
+      return true;
+    } catch (error) {
+      console.error('Błąd logowania tokenem Moodle:', error);
+      return false;
+    }
   }
 
   /**
@@ -313,6 +339,7 @@ export class AuthMoodleService {
    */
   async logout(): Promise<void> {
     await this.storageService.removeStorage('moodle_token_data');
+    await this.storageService.removeStorage('moodle_ws_token');
     await this.clearOAuthTemporaryData();
     this.authStateSubject.next(false);
   }
@@ -347,7 +374,25 @@ export class AuthMoodleService {
    */
   async isAuthenticated(): Promise<boolean> {
     const tokenData = await this.getTokenData();
-    return !!tokenData && !this.isTokenExpired(tokenData);
+    if (!!tokenData && !this.isTokenExpired(tokenData)) {
+      return true;
+    }
+
+    const wsToken = await this.getWebServiceToken();
+    return !!wsToken;
+  }
+
+  /**
+   * Pobiera token Moodle Web Service (jeśli używany tryb bez OAuth2)
+   */
+  async getWebServiceToken(): Promise<string | null> {
+    const token = await this.storageService.getStorage('moodle_ws_token');
+    if (typeof token !== 'string') {
+      return null;
+    }
+
+    const normalizedToken = token.trim();
+    return normalizedToken.length > 0 ? normalizedToken : null;
   }
 
   /**
@@ -369,6 +414,28 @@ export class AuthMoodleService {
    */
   private async saveTokenData(tokenData: MoodleTokenData): Promise<void> {
     await this.storageService.setStorage('moodle_token_data', tokenData);
+  }
+
+  /**
+   * Sprawdza poprawność Moodle Web Service token przez API
+   */
+  private async validateWebServiceToken(moodleUrl: string, wsToken: string): Promise<boolean> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<any>(`${moodleUrl}/webservice/rest/server.php`, {
+          params: {
+            wstoken: wsToken,
+            wsfunction: 'core_webservice_get_site_info',
+            moodlewsrestformat: 'json'
+          }
+        })
+      );
+
+      return !response?.error && !response?.exception && !!response?.userid;
+    } catch (error) {
+      console.error('Błąd walidacji Moodle Web Service token:', error);
+      return false;
+    }
   }
 
   /**

@@ -4,6 +4,7 @@ import { Observable, from, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthMoodleService } from './auth-moodle.service';
 import { Router } from '@angular/router';
+import { environment } from '../../environments/environment';
 
 /**
  * HTTP Interceptor do automatycznego dodawania tokena OAuth2 do requestów Moodle API
@@ -18,15 +19,24 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
   }
 
   // Dodaj token do requestu
-  return from(authService.getAccessToken()).pipe(
-    switchMap(token => {
+  return from(Promise.all([
+    authService.getAccessToken(),
+    authService.getWebServiceToken()
+  ])).pipe(
+    switchMap(([oauthToken, wsToken]) => {
       let authReq = req;
 
-      if (token) {
+      if (oauthToken) {
         // Dodaj Authorization header z Bearer token
         authReq = req.clone({
           setHeaders: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${oauthToken}`
+          }
+        });
+      } else if (wsToken && isWebServiceRestRequest(req)) {
+        authReq = req.clone({
+          setParams: {
+            wstoken: wsToken
           }
         });
       }
@@ -52,9 +62,19 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
 function shouldInterceptRequest(req: HttpRequest<any>): boolean {
   // Interceptuj tylko requesty do Moodle (ePortal PWr lub inne instancje)
   const url = req.url.toLowerCase();
-  return url.includes('eportal.pwr.edu.pl') || 
+  const isConfiguredMoodleHost = environment.moodleHosts.some(host => url.includes(host.toLowerCase()));
+
+  return isConfiguredMoodleHost || 
          url.includes('/webservice/') ||
          url.includes('/login/token.php');
+}
+
+/**
+ * Sprawdza czy request idzie do Moodle REST WebService endpoint
+ */
+function isWebServiceRestRequest(req: HttpRequest<any>): boolean {
+  const url = req.url.toLowerCase();
+  return url.includes('/webservice/rest/server.php') && !req.params.has('wstoken');
 }
 
 /**

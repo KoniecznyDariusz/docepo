@@ -40,11 +40,66 @@ npm run android:open
 
 ### Krok 4: Test w aplikacji
 1. Otwórz aplikację
-2. Wybierz lub wpisz: `https://eportal.pwr.edu.pl/`
+2. Wybierz lub wpisz:
+   - development (domyślnie): `https://eportal-test-lti.pwr.edu.pl/eportal_moodle_4_5/`
+   - production (docelowo): `https://eportal.pwr.edu.pl/`
 3. Kliknij **"Zaloguj przez OAuth2"**
 4. Powinna otworzyć się przeglądarka z ekranem logowania PWr
 5. Zaloguj się przez Active Directory
 6. Aplikacja powinna automatycznie wrócić i pokazać ekran kursów
+
+## 🔁 Przełączanie środowisk (test/prod)
+
+Adresy Moodle są teraz konfigurowane środowiskowo:
+
+- `src/environments/environment.development.ts` → domyślnie `eportal-test-lti`
+- `src/environments/environment.production.ts` → domyślnie `eportal.pwr.edu.pl`
+
+Przykładowe komendy:
+
+```bash
+# Development (test clone)
+ng serve
+
+# Build produkcyjny (docelowy ePortal)
+ng build --configuration production
+```
+
+## 🔐 Development bez OAuth2 (token Moodle / `wstoken`)
+
+Jeśli admin przygotował klon Moodle z pominięciem OAuth2, możesz zalogować się tokenem Web Service (`wstoken`).
+
+### Jak ustawić token lokalnie (Windows / PowerShell)
+
+Tymczasowo, tylko na bieżącą sesję terminala:
+
+```powershell
+$env:DOCEPO_MOODLE_WS_TOKEN="TU_WKLEJ_TOKEN"
+```
+
+Trwale dla użytkownika Windows:
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("DOCEPO_MOODLE_WS_TOKEN","TU_WKLEJ_TOKEN","User")
+```
+
+Odczyt wartości:
+
+```powershell
+[System.Environment]::GetEnvironmentVariable("DOCEPO_MOODLE_WS_TOKEN","User")
+```
+
+Usunięcie po testach:
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("DOCEPO_MOODLE_WS_TOKEN",$null,"User")
+```
+
+### Dobre praktyki
+
+- Nigdy nie wpisuj tokena do `src/environments/*.ts`.
+- Nie commituj tokena do repozytorium (także do dokumentacji i screenshotów).
+- Po zakończeniu testów poproś admina o rotację tokena.
 
 ### Krok 5: Test wylogowania
 1. W panelu kursów, kliknij ikonę drzwi 🚪 (górny prawy róg)

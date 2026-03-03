@@ -6,7 +6,7 @@ Aplikacja Docepo została rozszerzona o pełną integrację OAuth2/OpenID Connec
 
 ## Flow OAuth2
 
-1. **Użytkownik wybiera instancję Moodle** (np. `https://eportal.pwr.edu.pl/`)
+1. **Użytkownik wybiera instancję Moodle** (np. `https://eportal-test-lti.pwr.edu.pl/eportal_moodle_4_5/` w development lub `https://eportal.pwr.edu.pl/` w production)
 2. **Kliknięcie "Zaloguj przez OAuth2"** rozpoczyna flow:
    - Generowane są parametry bezpieczeństwa (state, nonce, PKCE code_verifier)
    - Otwierana jest przeglądarka systemowa z URL autoryzacji Keycloak
@@ -32,12 +32,21 @@ Główny serwis zarządzający autentykacją OAuth2/OIDC:
 - Implementuje PKCE (Proof Key for Code Exchange) dla bezpieczeństwa
 
 **Parametry OAuth2 dla ePortalu PWr:**
-- **Authorization endpoint**: `https://eportal.pwr.edu.pl/auth/oidc/`
+- **Authorization endpoint**: `{moodleUrl}/auth/oidc/` (zależnie od wybranego hosta Moodle)
 - **Token endpoint**: `https://login.pwr.edu.pl/auth/realms/pwr.edu.pl/protocol/openid-connect/token`
 - **Client ID**: `eportal`
 - **Scope**: `openid profile email`
 - **Redirect URI**: `pl.docentus.docepo://oauth`
 - **Response type**: `code` (Authorization Code Flow)
+
+### Konfiguracja środowisk (test/prod)
+
+Aplikacja używa środowisk Angular do domyślnego hosta:
+
+- `src/environments/environment.development.ts` → priorytet `https://eportal-test-lti.pwr.edu.pl/eportal_moodle_4_5/`
+- `src/environments/environment.production.ts` → priorytet `https://eportal.pwr.edu.pl/`
+
+Przełączanie odbywa się przez konfigurację builda (`development` / `production`) bez zmiany kodu logiki OAuth.
 
 ### 2. HTTP Interceptor (`src/app/service/auth-moodle.interceptor.ts`)
 
@@ -181,7 +190,7 @@ export class MoodleService {
 
 3. **Przetestuj flow:**
    - Otwórz aplikację
-   - Wybierz lub wpisz `https://eportal.pwr.edu.pl/`
+   - Wybierz lub wpisz `https://eportal-test-lti.pwr.edu.pl/eportal_moodle_4_5/` (development) albo `https://eportal.pwr.edu.pl/` (production)
    - Kliknij "Zaloguj przez OAuth2"
    - Powinna otworzyć się przeglądarka z ekranem logowania PWr
    - Zaloguj się przez Active Directory
