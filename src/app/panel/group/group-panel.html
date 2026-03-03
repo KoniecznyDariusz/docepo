@@ -1,7 +1,7 @@
 <div class="group-panel-container h-screen flex flex-col bg-gray-900 text-white">
-  <app-header [title]="courseName"></app-header>
+  <app-header [title]="courseName()"></app-header>
 
-  <app-group-list [groups]="groups" [groupClassDates]="groupClassDates" [groupAttendanceEnabled]="groupAttendanceEnabled"></app-group-list>
+  <app-group-list [groups]="groups()" [groupClassDates]="groupClassDates()" [groupAttendanceEnabled]="groupAttendanceEnabled()"></app-group-list>
 
   <app-footer></app-footer>
 </div>

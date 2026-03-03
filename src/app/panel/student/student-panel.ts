@@ -20,11 +20,11 @@ import { HeaderComponent } from 'app/component/header/header.component';
   styleUrls: ['./student-panel.css']
 })
 export class StudentPanel implements OnInit, OnDestroy {
-  student: Student | undefined;
-  group: Group | undefined;
-  course: Course | undefined;
-  groupId: string | undefined;
-  classDateId: string | undefined;
+  student = signal<Student | undefined>(undefined);
+  group = signal<Group | undefined>(undefined);
+  course = signal<Course | undefined>(undefined);
+  groupId = signal<string | undefined>(undefined);
+  classDateId = signal<string | undefined>(undefined);
   showInfoModal = signal(false);
 
   private route = inject(ActivatedRoute);
@@ -33,22 +33,22 @@ export class StudentPanel implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.route.queryParamMap.subscribe(q => {
-      this.classDateId = q.get('classDateId') || undefined;
+      this.classDateId.set(q.get('classDateId') || undefined);
     });
 
     this.route.params.subscribe(params => {
       const studentId = params['studentId'];
       const groupIdParam = params['groupId'];
-      this.groupId = groupIdParam;
+      this.groupId.set(groupIdParam);
 
       if (studentId && groupIdParam) {
         this.eportalService.getGroup(groupIdParam).subscribe(g => {
-          this.group = g;
+          this.group.set(g);
           if (g) {
-            this.eportalService.getCourse(g.courseId).subscribe(c => this.course = c);
+            this.eportalService.getCourse(g.courseId).subscribe(c => this.course.set(c));
 
             // back -> attendance (classDateId z URL albo pierwszy termin) albo grupy
-            const targetClassDateId = this.classDateId || g.classDates?.[0]?.id;
+            const targetClassDateId = this.classDateId() || g.classDates?.[0]?.id;
             if (targetClassDateId) {
               this.backNav.setBackUrl(`/attendance/${targetClassDateId}?selected=${studentId}`);
             } else {
@@ -57,7 +57,7 @@ export class StudentPanel implements OnInit, OnDestroy {
 
             // pobierz studentów i znajdź konkretnego
             this.eportalService.getStudents(groupIdParam).subscribe(list => {
-              this.student = list.find(s => s.id === studentId);
+              this.student.set(list.find(s => s.id === studentId));
             });
           }
         });

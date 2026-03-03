@@ -1,8 +1,8 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Course } from 'app/model/course.model';
-import { MoodleService } from 'app/service/moodle.service';
+import { MoodleService, MoodleCurrentUser } from 'app/service/moodle.service';
 import { ActivatedRoute } from '@angular/router';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
@@ -15,10 +15,13 @@ import { AuthMoodleService } from 'app/service/auth-moodle.service';
   styleUrl: './course-panel.css',
 })
 export class CoursePanel implements OnInit, OnDestroy {
-  courses: Course[] = [];
-  courseHighlighted: { [id: string]: boolean } = {};
-  // Przykładowe ID prowadzącego - w przyszłości pobrane np. po zalogowaniu
-  private lecturerId = 'darius-123';
+  courses = signal<Course[]>([]);
+  courseHighlighted = signal<{ [id: string]: boolean }>({});
+  currentUser = signal<MoodleCurrentUser | null>(null);
+  instructorName = computed(() => this.currentUser()?.fullName || 'Nieznany prowadzący');
+  coursesErrorMessage = signal('');
+  isLoadingData = signal(true);
+  private loadingTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private eportalService: MoodleService,
@@ -30,21 +33,69 @@ export class CoursePanel implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.backNav.setBackUrl('/moodle-selection');
+    this.isLoadingData.set(true);
+    this.loadingTimeoutHandle = setTimeout(() => {
+      if (this.isLoadingData()) {
+        console.warn('[Course Panel] Timeout ładowania danych - ukrywam overlay.');
+        this.isLoadingData.set(false);
+      }
+    }, 15000);
 
-    this.eportalService.getCourses(this.lecturerId).subscribe({
+    this.eportalService.getCurrentUser().subscribe({
+      next: (user) => {
+        this.currentUser.set(user);
+
+        if (user) {
+          console.info('[Course Panel] Moodle user:', {
+            fullName: user.fullName,
+            username: user.username,
+            id: user.id
+          });
+        }
+
+        const userIdForCourses = user?.id || '';
+        this.loadCourses(userIdForCourses);
+      },
+      error: (err) => {
+        console.error('Błąd podczas pobierania danych użytkownika:', err);
+        this.loadCourses('');
+      }
+    });
+  }
+
+  private loadCourses(userId: string): void {
+    this.eportalService.getCourses(userId).subscribe({
       next: (courses) => {
-        this.courses = courses;
+        this.courses.set(courses);
+        this.coursesErrorMessage.set('');
         // sprawdź dla każdego kursu, czy ma wyróżnioną grupę
-        this.courses.forEach(c => this.evaluateCourseHighlight(c.id));
+        this.courses().forEach(c => this.evaluateCourseHighlight(c.id));
+        this.isLoadingData.set(false);
+
+        if (this.loadingTimeoutHandle) {
+          clearTimeout(this.loadingTimeoutHandle);
+          this.loadingTimeoutHandle = null;
+        }
       },
       error: (err) => {
         console.error('Błąd podczas pobierania kursów:', err);
+        this.coursesErrorMessage.set('Nie udało się pobrać kursów z Moodle API.');
+        this.isLoadingData.set(false);
+
+        if (this.loadingTimeoutHandle) {
+          clearTimeout(this.loadingTimeoutHandle);
+          this.loadingTimeoutHandle = null;
+        }
       }
     });
   }
 
   ngOnDestroy(): void {
     this.backNav.clearBackUrl();
+    if (this.loadingTimeoutHandle) {
+      clearTimeout(this.loadingTimeoutHandle);
+      this.loadingTimeoutHandle = null;
+    }
   }
 
   onBack(): void {
@@ -63,7 +114,7 @@ export class CoursePanel implements OnInit, OnDestroy {
     this.eportalService.getGroups(courseId).subscribe({
       next: (groups) => {
         if (!groups || groups.length === 0) {
-          this.courseHighlighted[courseId] = false;
+          this.courseHighlighted.update(prev => ({ ...prev, [courseId]: false }));
           return;
         }
 
@@ -86,14 +137,14 @@ export class CoursePanel implements OnInit, OnDestroy {
               }
               pending--;
               if (pending === 0) {
-                this.courseHighlighted[courseId] = foundActive;
+                this.courseHighlighted.update(prev => ({ ...prev, [courseId]: foundActive }));
               }
             },
             error: (err) => {
               console.error(`Błąd podczas pobierania daty zajęć dla grupy ${g.id}:`, err);
               pending--;
               if (pending === 0) {
-                this.courseHighlighted[courseId] = foundActive;
+                this.courseHighlighted.update(prev => ({ ...prev, [courseId]: foundActive }));
               }
             }
           });
@@ -101,7 +152,7 @@ export class CoursePanel implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error(`Błąd podczas pobierania grup dla kursu ${courseId}:`, err);
-        this.courseHighlighted[courseId] = false;
+        this.courseHighlighted.update(prev => ({ ...prev, [courseId]: false }));
       }
     });
   }

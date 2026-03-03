@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { MoodleService } from 'app/service/moodle.service';
@@ -17,11 +17,11 @@ import { HeaderComponent } from 'app/component/header/header.component';
   styleUrls: ['./group-panel.css']
 })
 export class GroupPanel implements OnInit, OnDestroy {
-  groups: Group[] = [];
-  groupClassDates: { [id: string]: ClassDate | null } = {};
-  groupAttendanceEnabled: { [id: string]: boolean } = {};
+  groups = signal<Group[]>([]);
+  groupClassDates = signal<{ [id: string]: ClassDate | null }>({});
+  groupAttendanceEnabled = signal<{ [id: string]: boolean }>({});
   courseId!: string;
-  courseName: string | undefined;
+  courseName = signal<string | undefined>(undefined);
 
   private route = inject(ActivatedRoute);
   private eportalService = inject(MoodleService);
@@ -41,18 +41,18 @@ export class GroupPanel implements OnInit, OnDestroy {
   }
 
   private loadCourseAndGroups(courseId: string) {
-    this.eportalService.getCourse(courseId).subscribe(c => this.courseName = c?.name);
+    this.eportalService.getCourse(courseId).subscribe(c => this.courseName.set(c?.name));
     this.eportalService.getGroups(courseId).subscribe(groups => {
-      this.groups = groups;
+      this.groups.set(groups);
       this.loadClassDatesForAllGroups();
     });
   }
 
   private loadClassDatesForAllGroups() {
-    this.groups.forEach(g => {
+    this.groups().forEach(g => {
       this.eportalService.getCurrentOrNextClassDate(g.id).subscribe(cd => {
-        this.groupClassDates[g.id] = cd;
-        this.groupAttendanceEnabled[g.id] = !!cd && this.eportalService.isCurrentClassDate(cd.id);
+        this.groupClassDates.update(prev => ({ ...prev, [g.id]: cd }));
+        this.groupAttendanceEnabled.update(prev => ({ ...prev, [g.id]: !!cd && this.eportalService.isCurrentClassDate(cd.id) }));
       });
     });
   }

@@ -26,11 +26,11 @@ import { HeaderComponent } from 'app/component/header/header.component';
 })
 export class SolutionPanel implements OnInit {
   readonly solutionSettings = SolutionSettings;
-  solution: Solution | undefined;
-  task: Task | undefined;
-  student: Student | undefined;
-  course: Course | undefined;
-  group: Group | undefined;
+  solution = signal<Solution | undefined>(undefined);
+  task = signal<Task | undefined>(undefined);
+  student = signal<Student | undefined>(undefined);
+  course = signal<Course | undefined>(undefined);
+  group = signal<Group | undefined>(undefined);
   showInfoModal = signal(false);
   isEditingComment = signal(false);
   isRecording = signal(false);
@@ -59,29 +59,29 @@ export class SolutionPanel implements OnInit {
       if (studentId && taskId) {
         // Pobierz rozwiązanie
         this.moodle.getSolution(studentId, taskId).subscribe(sol => {
-          this.solution = sol;
+          this.solution.set(sol);
         });
 
         // Pobierz zadanie
         this.moodle.getTask(taskId).subscribe(task => {
-          this.task = task;
+          this.task.set(task);
         });
 
         // Pobierz studenta
         this.moodle.getStudents(groupId).subscribe(students => {
-          this.student = students.find(s => s.id === studentId);
+          this.student.set(students.find(s => s.id === studentId));
         });
 
         // Pobierz kurs
         if (courseId) {
           this.moodle.getCourse(courseId).subscribe(course => {
-            this.course = course;
+            this.course.set(course);
           });
         }
 
         // Pobierz grupę
         this.moodle.getGroup(groupId).subscribe(group => {
-          this.group = group;
+          this.group.set(group);
         });
 
         // Ustaw back URL
@@ -106,7 +106,7 @@ export class SolutionPanel implements OnInit {
   }
 
   openCommentEditor(): void {
-    let initialText = this.solution?.comment || '';
+    let initialText = this.solution()?.comment || '';
     
     // If date prepending is enabled, add a new line with date prefix
     if (this.prependDate()) {
@@ -131,12 +131,13 @@ export class SolutionPanel implements OnInit {
   }
 
   saveComment(): void {
-    if (this.solution) {
+    const currentSolution = this.solution();
+    if (currentSolution) {
       let finalText = this.commentText();
       
       // Note: Date prepending and appending logic is already handled in appendCommentText
       // For manual edits via modal, we just save as-is
-      this.solution.comment = finalText;
+      this.solution.set({ ...currentSolution, comment: finalText });
       this.updateSolution();
     }
     this.closeCommentEditor();
@@ -161,13 +162,14 @@ export class SolutionPanel implements OnInit {
     }
 
     // Append or replace
-    if (this.appendComment() && this.solution?.comment) {
-      finalText = this.solution.comment + '\n' + finalText;
+    const currentSolution = this.solution();
+    if (this.appendComment() && currentSolution?.comment) {
+      finalText = currentSolution.comment + '\n' + finalText;
     }
 
     this.commentText.set(finalText);
-    if (this.solution) {
-      this.solution.comment = finalText;
+    if (currentSolution) {
+      this.solution.set({ ...currentSolution, comment: finalText });
     }
   }
 
@@ -294,8 +296,9 @@ export class SolutionPanel implements OnInit {
   }
 
   openPointsEditor(): void {
-    if (this.solution) {
-      this.editedPoints.set(this.solution.points);
+    const currentSolution = this.solution();
+    if (currentSolution) {
+      this.editedPoints.set(currentSolution.points);
       this.showPointsModal.set(true);
     }
   }
@@ -305,23 +308,27 @@ export class SolutionPanel implements OnInit {
   }
 
   setQuickPoints(percentage: number): void {
-    if (this.task) {
-      const points = Math.round((this.task.maxPoints * percentage) / 100);
+    const currentTask = this.task();
+    if (currentTask) {
+      const points = Math.round((currentTask.maxPoints * percentage) / 100);
       this.editedPoints.set(points);
     }
   }
 
   savePoints(): void {
-    if (this.solution && this.task) {
-      this.solution.points = this.editedPoints();
+    const currentSolution = this.solution();
+    const currentTask = this.task();
+    if (currentSolution && currentTask) {
+      this.solution.set({ ...currentSolution, points: this.editedPoints() });
       // TODO: Wywołanie serwisu do zapisania punktów na serwerze
       this.closePointsEditor();
     }
   }
 
   openStatusEditor(): void {
-    if (this.solution) {
-      this.editedStatus.set(this.solution.status || '');
+    const currentSolution = this.solution();
+    if (currentSolution) {
+      this.editedStatus.set(currentSolution.status || '');
       this.showStatusModal.set(true);
     }
   }
@@ -331,8 +338,9 @@ export class SolutionPanel implements OnInit {
   }
 
   saveStatus(): void {
-    if (this.solution) {
-      this.solution.status = (this.editedStatus() || '') as any;
+    const currentSolution = this.solution();
+    if (currentSolution) {
+      this.solution.set({ ...currentSolution, status: (this.editedStatus() || '') as any });
       // TODO: Wywołanie serwisu do zapisania statusu na serwerze
       this.closeStatusEditor();
     }
@@ -340,8 +348,9 @@ export class SolutionPanel implements OnInit {
 
   selectAndSaveStatus(status: string): void {
     this.editedStatus.set(status);
-    if (this.solution) {
-      this.solution.status = status as any;
+    const currentSolution = this.solution();
+    if (currentSolution) {
+      this.solution.set({ ...currentSolution, status: status as any });
       // TODO: Wywołanie serwisu do zapisania statusu na serwerze
       this.closeStatusEditor();
     }
@@ -356,8 +365,9 @@ export class SolutionPanel implements OnInit {
   }
 
   confirmDeleteComment(): void {
-    if (this.solution) {
-      this.solution.comment = '';
+    const currentSolution = this.solution();
+    if (currentSolution) {
+      this.solution.set({ ...currentSolution, comment: '' });
       this.commentText.set('');
       // TODO: Wywołanie serwisu do zapisania pustego komentarza na serwerze
     }
@@ -365,7 +375,7 @@ export class SolutionPanel implements OnInit {
   }
 
   updateSolution(): void {
-    if (!this.solution) return;
+    if (!this.solution()) return;
     // TODO: Implementacja aktualizacji rozwiązania
   }
 }

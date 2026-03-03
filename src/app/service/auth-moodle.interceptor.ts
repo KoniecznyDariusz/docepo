@@ -33,12 +33,18 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
             Authorization: `Bearer ${oauthToken}`
           }
         });
+        if (!environment.production) {
+          console.info('[Auth] Request autoryzowany przez OAuth2 Bearer token:', req.url);
+        }
       } else if (wsToken && isWebServiceRestRequest(req)) {
         authReq = req.clone({
           setParams: {
             wstoken: wsToken
           }
         });
+        if (!environment.production) {
+          console.info('[Auth] Request autoryzowany przez Moodle wstoken:', req.url);
+        }
       }
 
       return next(authReq).pipe(

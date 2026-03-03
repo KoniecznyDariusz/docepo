@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { MoodleEndpoint, StorageService } from '../../service/storage.service';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
@@ -20,12 +21,16 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
   private backNav = inject(BackNavigationService);
   private authService = inject(AuthMoodleService);
 
-  moodleUrl: string = '';
-  moodleWsToken: string = '';
-  endpointSelection: string = '';
-  moodleEndpoints: MoodleEndpoint[] = [];
-  isLoading: boolean = false;
-  errorMessage: string = '';
+  moodleUrl = signal('');
+  moodleWsToken = signal('');
+  loginMode = signal<'oauth' | 'token'>('token');
+  endpointSelection = signal('');
+  moodleEndpoints = signal<MoodleEndpoint[]>([]);
+  isOAuthLoading = signal(false);
+  isTokenLoading = signal(false);
+  errorMessage = signal('');
+
+  isLoading = computed(() => this.isOAuthLoading() || this.isTokenLoading());
 
   async ngOnInit(): Promise<void> {
     this.backNav.setBackUrl(null);
@@ -43,9 +48,9 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
       this.storageService.getMoodleEndpoints()
     ]);
 
-    this.moodleEndpoints = endpoints;
+    this.moodleEndpoints.set(endpoints);
     if (storedUrl) {
-      this.moodleUrl = storedUrl;
+      this.moodleUrl.set(storedUrl);
     }
   }
 
@@ -59,76 +64,88 @@ export class MoodleSelectionPanel implements OnInit, OnDestroy {
 
   onEndpointSelected(url: string): void {
     if (!url) return;
-    this.moodleUrl = url;
+    this.moodleUrl.set(url);
+  }
+
+  onLoginModeChange(mode: 'oauth' | 'token'): void {
+    this.loginMode.set(mode);
+    this.errorMessage.set('');
   }
 
   async onSubmit() {
-    if (!this.moodleUrl.trim()) {
-      this.errorMessage = 'Proszę wpisać adres Moodle';
+    if (!this.moodleUrl().trim()) {
+      this.errorMessage.set('Proszę wpisać adres Moodle');
       return;
     }
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isOAuthLoading.set(true);
+    this.errorMessage.set('');
 
     try {
       // Zapisz URL Moodle
-      await this.storageService.setMoodleUrl(this.moodleUrl.trim());
+      await this.storageService.setMoodleUrl(this.moodleUrl().trim());
       
       // Rozpocznij flow OAuth2 - otworzy przeglądarkę do logowania
-      const success = await this.authService.login(this.moodleUrl.trim());
+      const success = Capacitor.isNativePlatform()
+        ? await this.authService.login(this.moodleUrl().trim())
+        : await Promise.race<boolean>([
+            this.authService.login(this.moodleUrl().trim()),
+            new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 15000))
+          ]);
       
       if (success) {
         // Logowanie powiodło się - przekieruj na kursy
         const navigated = await this.router.navigate(['/course']);
         if (!navigated) {
-          this.errorMessage = 'Nie udało się przejść dalej. Spróbuj ponownie.';
+          this.errorMessage.set('Nie udało się przejść dalej. Spróbuj ponownie.');
         }
       } else {
-        this.errorMessage = 'Logowanie nie powiodło się. Spróbuj ponownie.';
+        this.errorMessage.set(Capacitor.isNativePlatform()
+          ? 'Logowanie nie powiodło się. Spróbuj ponownie.'
+          : 'Logowanie OAuth2 w przeglądarce nie zostało dokończone. Użyj logowania tokenem Moodle lub uruchom aplikację mobilną.');
       }
     } catch (error) {
-      this.errorMessage = 'Błąd podczas logowania. Spróbuj ponownie.';
+      this.errorMessage.set('Błąd podczas logowania. Spróbuj ponownie.');
       console.error(error);
     } finally {
-      this.isLoading = false;
+      this.isOAuthLoading.set(false);
     }
   }
 
   async onSubmitWithToken() {
-    if (!this.moodleUrl.trim()) {
-      this.errorMessage = 'Proszę wpisać adres Moodle';
+    if (!this.moodleUrl().trim()) {
+      this.errorMessage.set('Proszę wpisać adres Moodle');
       return;
     }
 
-    if (!this.moodleWsToken.trim()) {
-      this.errorMessage = 'Proszę wkleić token Moodle';
+    if (!this.moodleWsToken().trim()) {
+      this.errorMessage.set('Proszę wkleić token Moodle');
       return;
     }
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isTokenLoading.set(true);
+    this.errorMessage.set('');
 
     try {
-      const normalizedUrl = this.moodleUrl.trim();
+      const normalizedUrl = this.moodleUrl().trim();
       await this.storageService.setMoodleUrl(normalizedUrl);
 
-      const success = await this.authService.loginWithWebServiceToken(normalizedUrl, this.moodleWsToken.trim());
+      const success = await this.authService.loginWithWebServiceToken(normalizedUrl, this.moodleWsToken().trim());
 
       if (success) {
-        this.moodleWsToken = '';
+        this.moodleWsToken.set('');
         const navigated = await this.router.navigate(['/course']);
         if (!navigated) {
-          this.errorMessage = 'Nie udało się przejść dalej. Spróbuj ponownie.';
+          this.errorMessage.set('Nie udało się przejść dalej. Spróbuj ponownie.');
         }
       } else {
-        this.errorMessage = 'Token jest nieprawidłowy lub serwer odrzucił autoryzację.';
+        this.errorMessage.set('Token jest nieprawidłowy lub serwer odrzucił autoryzację.');
       }
     } catch (error) {
-      this.errorMessage = 'Błąd podczas logowania tokenem. Spróbuj ponownie.';
+      this.errorMessage.set('Błąd podczas logowania tokenem. Spróbuj ponownie.');
       console.error(error);
     } finally {
-      this.isLoading = false;
+      this.isTokenLoading.set(false);
     }
   }
 }

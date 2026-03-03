@@ -19,13 +19,13 @@ import { HeaderComponent } from 'app/component/header/header.component';
   styleUrl: './attendance-panel.css'
 })
 export class AttendancePanel implements OnInit, OnDestroy {
-  group: Group | undefined;
-  course: Course | undefined;
-  currentClassDate: ClassDate | null = null;
-  instructor = 'dr inż. Jan Niezbędny'; // Dane prowadzącego (na razie statyczne)
+  group = signal<Group | undefined>(undefined);
+  course = signal<Course | undefined>(undefined);
+  currentClassDate = signal<ClassDate | null>(null);
+  instructor = signal('dr inż. Jan Niezbędny'); // Dane prowadzącego (na razie statyczne)
   showInfoModal = signal(false);
 
-  selectedStudentId: string | null = null;
+  selectedStudentId = signal<string | null>(null);
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -34,7 +34,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.route.queryParamMap.subscribe(q => {
-      this.selectedStudentId = q.get('selected');
+      this.selectedStudentId.set(q.get('selected'));
     });
 
     // Observe route params: classDateId (uniquely identifies a specific session with all students)
@@ -44,16 +44,16 @@ export class AttendancePanel implements OnInit, OnDestroy {
       if (classDateId) {
         // Find group containing this classDateId
         this.eportalService.getGroupByClassDateId(classDateId).subscribe(g => {
-          this.group = g;
+          this.group.set(g);
           if (g) {
             this.backNav.setBackUrl(`/groups/${g.courseId}`);
 
             this.eportalService.getCourse(g.courseId).subscribe(course => {
-              this.course = course;
+              this.course.set(course);
             });
             // Find the exact classDate
             const cd = (g.classDates || []).find(x => x.id === classDateId) || null;
-            this.currentClassDate = cd;
+            this.currentClassDate.set(cd);
           }
         });
       }
@@ -77,7 +77,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
   }
 
   onSelectedStudentHandled(): void {
-    if (!this.selectedStudentId) {
+    if (!this.selectedStudentId()) {
       return;
     }
 

@@ -1,21 +1,21 @@
 <div class="solution-panel h-screen flex flex-col bg-gray-900 text-white">
-  <app-header [title]="task ? task.name + (task.description ? ' - ' + task.description : '') : undefined"></app-header>
+  <app-header [title]="task() ? task()!.name + (task()!.description ? ' - ' + task()!.description : '') : undefined"></app-header>
 
   <main class="flex-1 overflow-auto p-4 space-y-4">
-    @if (solution && task) {
+    @if (solution() && task()) {
       <!-- Solution Details -->
       <section class="bg-gray-800 p-4 rounded-md">
         <div class="space-y-3">
           <div>
             <p class="text-sm text-gray-400">Data wykonania</p>
-            <p class="text-base font-semibold">{{ solution.completedAt | date: 'yyyy-MM-dd HH:mm' }}</p>
+            <p class="text-base font-semibold">{{ solution()!.completedAt | date: 'yyyy-MM-dd HH:mm' }}</p>
           </div>
 
           <div>
             <p class="text-sm text-gray-400">Punkty</p>
             <div class="flex items-center justify-between">
               <p class="text-base font-semibold">
-                {{ solution.points }} / {{ task.maxPoints }}
+                {{ solution()!.points }} / {{ task()!.maxPoints }}
               </p>
               <button 
                 type="button" 
@@ -28,8 +28,8 @@
             <div class="mt-2 w-full bg-gray-700 rounded-full h-2.5">
               <div 
                 class="h-2.5 rounded-full transition-all duration-300"
-                [style.width.%]="(solution.points / task.maxPoints) * 100"
-                [style.background-color]="solutionSettings.getSolutionFillColor(solution.points, task.maxPoints)">
+                [style.width.%]="(solution()?.points || 0) / (task()?.maxPoints || 1) * 100"
+                [style.background-color]="solutionSettings.getSolutionFillColor(solution()!.points, task()!.maxPoints)">
               </div>
             </div>
           </div>
@@ -37,8 +37,8 @@
           <div>
             <p class="text-sm text-gray-400">Stan</p>
             <div class="flex items-center justify-between">
-              <p [class]="'text-base font-semibold ' + solutionSettings.getStatusTextColor(solution.status || '')">
-                {{ solutionSettings.getStatusDescription(solution.status || '') }}
+              <p [class]="'text-base font-semibold ' + solutionSettings.getStatusTextColor(solution()!.status || '')">
+                {{ solutionSettings.getStatusDescription(solution()!.status || '') }}
               </p>
               <button 
                 type="button" 
@@ -131,7 +131,7 @@
             </div>
           </div>
         </div>
-        <p class="text-base font-semibold whitespace-pre-wrap">{{ solution.comment || '-' }}</p>
+        <p class="text-base font-semibold whitespace-pre-wrap">{{ solution()!.comment || '-' }}</p>
       </section>
 
       <!-- TODO: Edycja rozwiązania - punkty, status, komentarz -->
@@ -156,7 +156,8 @@
 
         <div class="space-y-4">
           <textarea 
-            [(ngModel)]="commentText"
+            [ngModel]="commentText()"
+            (ngModelChange)="commentText.set($event)"
             placeholder="Wpisz komentarz..."
             class="w-full p-3 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none min-h-32 resize-none">
           </textarea>
@@ -204,10 +205,10 @@
                 {{ editedPoints() }}
               </p>
               <p class="text-lg text-gray-400 mt-2">
-                / {{ task?.maxPoints }}
+                / {{ task()?.maxPoints }}
               </p>
               <p class="text-sm text-blue-400 font-semibold mt-3">
-                {{ (task?.maxPoints ?? 1) > 0 ? ((editedPoints() / (task?.maxPoints ?? 1)) * 100).toFixed(0) : 0 }}%
+                {{ (task()?.maxPoints ?? 1) > 0 ? ((editedPoints() / (task()?.maxPoints ?? 1)) * 100).toFixed(0) : 0 }}%
               </p>
             </div>
 
@@ -216,7 +217,7 @@
               <app-points-wheel
                 [value]="editedPoints()"
                 [min]="0"
-                [max]="task?.maxPoints || 0"
+                [max]="task()?.maxPoints || 0"
                 (valueChange)="editedPoints.set($event)">
               </app-points-wheel>
             </div>
@@ -364,10 +365,10 @@
 
   <app-info-task 
     [show]="showInfoModal()" 
-    [student]="student" 
-    [course]="course" 
-    [group]="group" 
-    [task]="task" 
+    [student]="student()" 
+    [course]="course()" 
+    [group]="group()" 
+    [task]="task()" 
     (close)="closeInfoModal()">
   </app-info-task>
 </div>

@@ -1,5 +1,7 @@
-import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, from, of, throwError } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { Student } from 'app/model/student.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 import { Attendance } from 'app/model/attendance.model';
@@ -8,11 +10,48 @@ import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { Task } from 'app/model/task.model';
 import { Solution, SolutionStatus } from 'app/model/solution.model';
+import { StorageService } from './storage.service';
+
+interface MoodleSiteInfoResponse {
+  username?: string;
+  firstname?: string;
+  lastname?: string;
+  fullname?: string;
+  fullnamedisplay?: string;
+  userid?: number | string;
+  exception?: string;
+  errorcode?: string;
+  message?: string;
+}
+
+interface MoodleCourseResponse {
+  id: number | string;
+  fullname?: string;
+  shortname?: string;
+  displayname?: string;
+  fullnameformatted?: string;
+}
+
+interface MoodleTimelineCoursesResponse {
+  courses?: MoodleCourseResponse[];
+  exception?: string;
+  message?: string;
+}
+
+export interface MoodleCurrentUser {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class MoodleService {
+  private http = inject(HttpClient);
+  private storageService = inject(StorageService);
 
   // Przykładowe dane - w przyszłości zastąpione pobieraniem z API
   private students: Student[] = [
@@ -25,12 +64,7 @@ export class MoodleService {
   private readonly currentClassLeadMinutes = 5;
   private readonly currentClassGraceMinutes = 15;
 
-  // Przykładowe dane kursów - w przyszłości zastąpione pobieraniem z API
-  private courses: Course[] = [
-    { id: 'c1', name: 'Wprowadzenie do Programowania' },
-    { id: 'c2', name: 'Sieci Komputerowe' },
-    { id: 'c3', name: 'Bazy Danych' },
-  ];
+  private courses: Course[] = [];
 
   // Ułatwia tworzenie dat względem "teraz"
   private now = Date.now();
@@ -150,11 +184,159 @@ export class MoodleService {
     return of(group);
   }
 
+  getCurrentUser(): Observable<MoodleCurrentUser | null> {
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.http.get<MoodleSiteInfoResponse>(
+          `${normalizedMoodleUrl}/webservice/rest/server.php`,
+          {
+            params: {
+              wsfunction: 'core_webservice_get_site_info',
+              moodlewsrestformat: 'json'
+            }
+          }
+        );
+      }),
+      map(siteInfo => {
+        const parsedUserId = Number(siteInfo?.userid);
+
+        if (siteInfo?.exception || Number.isNaN(parsedUserId)) {
+          throw new Error(siteInfo?.message || 'Nie udało się pobrać danych użytkownika.');
+        }
+
+        return {
+          id: String(parsedUserId),
+          username: siteInfo.username || '',
+          firstName: siteInfo.firstname || '',
+          lastName: siteInfo.lastname || '',
+          fullName: (siteInfo.fullname || siteInfo.fullnamedisplay || `${siteInfo.firstname || ''} ${siteInfo.lastname || ''}`.trim() || siteInfo.username || `Użytkownik ${parsedUserId}`).trim()
+        };
+      }),
+      catchError(error => {
+        console.warn('[Moodle API] Błąd pobierania danych użytkownika:', error);
+        return of(null);
+      })
+    );
+  }
+
   getCourses(lecturerId: string): Observable<Course[]> {
-    // Tutaj w przyszłości będzie wywołanie np. this.http.get<Course[]>(`api/courses?lecturerId=${lecturerId}`)
-    // Na razie zwracamy dane testowe, ignorując lecturerId.
     console.log(`Pobieranie kursów dla prowadzącego o ID: ${lecturerId}`);
-    return of(this.courses);
+
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        const parsedLecturerId = Number(lecturerId);
+        const hasLecturerId = Number.isFinite(parsedLecturerId) && parsedLecturerId > 0;
+
+        const fetchByEnrol = (userId: number): Observable<MoodleCourseResponse[] | MoodleSiteInfoResponse> => {
+          return this.http.get<MoodleCourseResponse[] | MoodleSiteInfoResponse>(
+            `${normalizedMoodleUrl}/webservice/rest/server.php`,
+            {
+              params: {
+                wsfunction: 'core_enrol_get_users_courses',
+                userid: String(userId),
+                moodlewsrestformat: 'json'
+              }
+            }
+          );
+        };
+
+        if (hasLecturerId) {
+          return fetchByEnrol(parsedLecturerId);
+        }
+
+        return this.http.get<MoodleSiteInfoResponse>(
+          `${normalizedMoodleUrl}/webservice/rest/server.php`,
+          {
+            params: {
+              wsfunction: 'core_webservice_get_site_info',
+              moodlewsrestformat: 'json'
+            }
+          }
+        ).pipe(
+          switchMap(siteInfo => {
+            const parsedUserId = Number(siteInfo?.userid);
+
+            if (siteInfo?.exception || Number.isNaN(parsedUserId)) {
+              throw new Error(siteInfo?.message || 'Nie udało się pobrać informacji o użytkowniku.');
+            }
+
+            return fetchByEnrol(parsedUserId);
+          })
+        );
+      }),
+      switchMap(response => {
+        const mapCourses = (raw: MoodleCourseResponse[]): Course[] => {
+          return raw
+            .filter(course => String(course.id).trim().length > 0)
+            .map(course => ({
+              id: String(course.id),
+              name: (
+                course.fullname ||
+                course.displayname ||
+                course.fullnameformatted ||
+                course.shortname ||
+                `Kurs ${course.id}`
+              ).trim()
+            }));
+        };
+
+        if (Array.isArray(response)) {
+          const coursesFromApi = mapCourses(response);
+
+          if (coursesFromApi.length > 0) {
+            console.info(`[Moodle API] Pobrano kursy (core_enrol_get_users_courses): ${coursesFromApi.length}`);
+            this.courses = coursesFromApi;
+            return of(coursesFromApi);
+          }
+
+          return from(this.storageService.getMoodleUrl()).pipe(
+            switchMap(moodleUrl => {
+              const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+              return this.http.get<MoodleTimelineCoursesResponse>(
+                `${normalizedMoodleUrl}/webservice/rest/server.php`,
+                {
+                  params: {
+                    wsfunction: 'core_course_get_enrolled_courses_by_timeline_classification',
+                    classification: 'all',
+                    offset: '0',
+                    limit: '0',
+                    moodlewsrestformat: 'json'
+                  }
+                }
+              );
+            }),
+            map(timelineResponse => {
+              if (timelineResponse?.exception) {
+                throw new Error(timelineResponse.message || 'Błąd pobierania kursów timeline.');
+              }
+
+              const coursesFromTimeline = mapCourses(timelineResponse.courses || []);
+              console.info(`[Moodle API] Pobrano kursy (timeline): ${coursesFromTimeline.length}`);
+              this.courses = coursesFromTimeline;
+              return coursesFromTimeline;
+            })
+          );
+        }
+
+        throw new Error(response?.message || 'Nieprawidłowa odpowiedź listy kursów.');
+      }),
+      catchError(error => {
+        console.error('[Moodle API] Błąd pobierania kursów:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   getGroups(courseId: string): Observable<Group[]> {

@@ -81,6 +81,7 @@ export class AuthMoodleService {
 
       await this.storageService.setStorage('moodle_ws_token', normalizedToken);
       this.authStateSubject.next(true);
+      console.info('[Auth] Zalogowano tokenem Moodle Web Service.');
       return true;
     } catch (error) {
       console.error('Błąd logowania tokenem Moodle:', error);
@@ -160,6 +161,7 @@ export class AuthMoodleService {
       // Zapisz token
       await this.saveTokenData(tokenData);
       this.authStateSubject.next(true);
+      console.info('[Auth] Zalogowano przez OAuth2/OIDC.');
 
       // Wyczyść tymczasowe dane
       await this.clearOAuthTemporaryData();
