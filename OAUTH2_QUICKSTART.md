@@ -221,6 +221,10 @@ Po otrzymaniu parametrów od admina, zaktualizuj te wartości.
 npx cap run android -l --host=192.168.0.112
 adb logcat | grep -i "docepo"
 ```
+
+### Problem: "Wyjątek w kontroli dostępu" przy ładowaniu grup
+**Przyczyna:** Konto/token nie ma pełnych uprawnień do `core_group_get_course_groups` lub dostępu do kursu/grup.  
+**Rozwiązanie:** Poproś admina o weryfikację sekcji 3 i 4 w [ADMIN_OAUTH2_SETUP.md](ADMIN_OAUTH2_SETUP.md) (External Service + Authorized users + capabilities + dostęp do kursu).
 **Szukaj:** "App URL opened: pl.docentus.docepo://oauth..."
 
 ### Problem: Token nie jest dodawany do requestów

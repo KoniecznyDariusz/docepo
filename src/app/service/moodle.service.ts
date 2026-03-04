@@ -38,6 +38,29 @@ interface MoodleTimelineCoursesResponse {
   message?: string;
 }
 
+interface MoodleGroupResponse {
+  id: number | string;
+  courseid?: number | string;
+  name?: string;
+}
+
+interface MoodleCourseGroupsResponse {
+  groups?: MoodleGroupResponse[];
+  exception?: string;
+  message?: string;
+}
+
+interface MoodleEnrolledUserGroupResponse {
+  id: number | string;
+  name?: string;
+}
+
+interface MoodleEnrolledUserResponse {
+  groups?: MoodleEnrolledUserGroupResponse[];
+  exception?: string;
+  message?: string;
+}
+
 export interface MoodleCurrentUser {
   id: string;
   username: string;
@@ -52,6 +75,67 @@ export interface MoodleCurrentUser {
 export class MoodleService {
   private http = inject(HttpClient);
   private storageService = inject(StorageService);
+
+  private isAccessControlErrorMessage(message: string): boolean {
+    const normalized = (message || '').toLowerCase();
+    return normalized.includes('kontroli dostępu') || normalized.includes('accessexception');
+  }
+
+  private toGroups(rawGroups: Array<MoodleGroupResponse | MoodleEnrolledUserGroupResponse>, courseId: string): Group[] {
+    const uniqueById = new Map<string, Group>();
+
+    rawGroups.forEach(group => {
+      const groupId = String(group.id || '').trim();
+      if (!groupId) {
+        return;
+      }
+
+      if (!uniqueById.has(groupId)) {
+        uniqueById.set(groupId, {
+          id: groupId,
+          courseId,
+          name: (group.name || `Grupa ${groupId}`).trim(),
+          classDates: []
+        });
+      }
+    });
+
+    return Array.from(uniqueById.values());
+  }
+
+  private updateGroupsCache(courseId: string, groups: Group[]): void {
+    this.groups = [
+      ...this.groups.filter(group => group.courseId !== courseId),
+      ...groups
+    ];
+  }
+
+  private fetchGroupsFromEnrolledUsers(moodleUrl: string, courseId: string): Observable<Group[]> {
+    return this.http.get<MoodleEnrolledUserResponse[] | MoodleEnrolledUserResponse>(
+      `${moodleUrl}/webservice/rest/server.php`,
+      {
+        params: {
+          wsfunction: 'core_enrol_get_enrolled_users',
+          courseid: courseId,
+          moodlewsrestformat: 'json'
+        }
+      }
+    ).pipe(
+      map(response => {
+        if (!Array.isArray(response) && response?.exception) {
+          throw new Error(response.message || `Błąd pobierania użytkowników kursu ${courseId}.`);
+        }
+
+        const users = Array.isArray(response) ? response : [];
+        const rawGroups = users.flatMap(user => user.groups || []);
+        const groups = this.toGroups(rawGroups, courseId);
+
+        this.updateGroupsCache(courseId, groups);
+        console.info(`[Moodle API] Fallback grup przez enrolled users dla kursu ${courseId}: ${groups.length}`);
+        return groups;
+      })
+    );
+  }
 
   private parseEportalCourseName(rawName: string): Pick<Course, 'eportalName' | 'courseCode' | 'courseFormLetter' | 'courseName' | 'courseFormName'> {
     const eportalName = (rawName || '').trim();
@@ -370,9 +454,63 @@ export class MoodleService {
   }
 
   getGroups(courseId: string): Observable<Group[]> {
-    // Filtrujemy grupy po ID kursu
-    const courseGroups = this.groups.filter(g => g.courseId === courseId);
-    return of(courseGroups);
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.http.get<MoodleGroupResponse[] | MoodleCourseGroupsResponse>(
+          `${normalizedMoodleUrl}/webservice/rest/server.php`,
+          {
+            params: {
+              wsfunction: 'core_group_get_course_groups',
+              courseid: courseId,
+              moodlewsrestformat: 'json'
+            }
+          }
+        ).pipe(
+          switchMap(response => {
+            if (!Array.isArray(response) && response?.exception) {
+              const apiErrorMessage = response.message || `Błąd pobierania grup dla kursu ${courseId}.`;
+
+              if (this.isAccessControlErrorMessage(apiErrorMessage)) {
+                console.warn(`[Moodle API] Brak dostępu do core_group_get_course_groups dla kursu ${courseId}. Próba fallbacku przez core_enrol_get_enrolled_users.`);
+                return this.fetchGroupsFromEnrolledUsers(normalizedMoodleUrl, courseId);
+              }
+
+              throw new Error(apiErrorMessage);
+            }
+
+            const rawGroups = Array.isArray(response) ? response : (response.groups || []);
+            const groupsFromApi = this.toGroups(rawGroups, courseId).map(group => ({
+              ...group,
+              courseId: String((rawGroups.find(raw => String(raw.id) === group.id) as MoodleGroupResponse | undefined)?.courseid ?? courseId)
+            }));
+
+            this.updateGroupsCache(courseId, groupsFromApi);
+            console.info(`[Moodle API] Pobrano grupy dla kursu ${courseId}: ${groupsFromApi.length}`);
+            return of(groupsFromApi);
+          }),
+          catchError(error => {
+            const errorMessage = String(error?.message || '');
+
+            if (this.isAccessControlErrorMessage(errorMessage)) {
+              console.warn(`[Moodle API] Błąd dostępu przy core_group_get_course_groups dla kursu ${courseId}. Próba fallbacku przez core_enrol_get_enrolled_users.`);
+              return this.fetchGroupsFromEnrolledUsers(normalizedMoodleUrl, courseId);
+            }
+
+            return throwError(() => error);
+          })
+        );
+      }),
+      catchError(error => {
+        console.error(`[Moodle API] Błąd pobierania grup dla kursu ${courseId}:`, error);
+        return throwError(() => error);
+      })
+    );
   }
 
   getGroup(groupId: string): Observable<Group | undefined> {

@@ -20,6 +20,7 @@ export class GroupPanel implements OnInit, OnDestroy {
   groups = signal<Group[]>([]);
   groupClassDates = signal<{ [id: string]: ClassDate | null }>({});
   groupAttendanceEnabled = signal<{ [id: string]: boolean }>({});
+  groupsErrorMessage = signal('');
   courseId!: string;
   courseName = signal<string | undefined>(undefined);
 
@@ -42,9 +43,27 @@ export class GroupPanel implements OnInit, OnDestroy {
 
   private loadCourseAndGroups(courseId: string) {
     this.eportalService.getCourse(courseId).subscribe(c => this.courseName.set(c?.eportalName));
-    this.eportalService.getGroups(courseId).subscribe(groups => {
-      this.groups.set(groups);
-      this.loadClassDatesForAllGroups();
+    this.eportalService.getGroups(courseId).subscribe({
+      next: (groups) => {
+        this.groups.set(groups);
+        this.groupsErrorMessage.set('');
+        this.loadClassDatesForAllGroups();
+      },
+      error: (error) => {
+        const rawMessage = String(error?.message || '');
+        const isAccessError = rawMessage.toLowerCase().includes('kontroli dostępu') || rawMessage.toLowerCase().includes('accessexception');
+
+        this.groups.set([]);
+        this.groupClassDates.set({});
+        this.groupAttendanceEnabled.set({});
+        this.groupsErrorMessage.set(
+          isAccessError
+            ? 'Brak uprawnień do pobierania grup dla tego kursu.'
+            : 'Nie udało się pobrać grup dla wybranego kursu.'
+        );
+
+        console.error(`[Group Panel] Błąd ładowania grup dla kursu ${courseId}:`, error);
+      }
     });
   }
 

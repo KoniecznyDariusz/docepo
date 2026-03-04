@@ -43,7 +43,7 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
           }
         });
         if (!environment.production) {
-          console.info('[Auth] Request autoryzowany przez Moodle wstoken:', req.url);
+          console.info('[Auth] Request autoryzowany przez Moodle wstoken:', req.url, wsToken);
         }
       }
 

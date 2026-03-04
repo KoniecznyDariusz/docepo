@@ -87,48 +87,79 @@ Moodle może być skonfigurowane aby akceptować Bearer token z Keycloak:
 
 ### Site administration → Plugins → Web services → External services:
 
-Utwórz nowy External Service o nazwie **"Docepo Mobile"**:
+Utwórz nowy External Service o nazwie **"Docepo Mobile"** i skonfiguruj:
 
-**Dodaj funkcje:**
+1. **Enabled:** ✅ ON
+2. **Authorized users only:** ✅ ON
+3. **Can download files:** ✅ YES
+4. **Can upload files:** ❌ NO (włącz tylko jeśli planowany upload plików)
+5. **Required capability:** zostaw puste lub ustaw zgodnie z polityką instancji
+
+Następnie dodaj funkcje Web Service (minimum dla aktualnej aplikacji):
 ```
 core_webservice_get_site_info
 core_enrol_get_users_courses
-core_course_get_courses
 core_group_get_course_groups
 core_enrol_get_enrolled_users
-mod_attendance_get_sessions
-mod_attendance_update_user_status
+```
+
+Funkcje wymagane dla kolejnych ekranów (attendance / zadania):
+```
 mod_attendance_get_attendances
+mod_attendance_get_sessions
+mod_attendance_get_session
+mod_attendance_update_user_status
 mod_assign_get_assignments
 mod_assign_get_submissions
 mod_assign_save_grade
 ```
 
-**Uprawnienia:**
-- Authorized users only
-- Can download files: ✅ YES
-- Upload files: ❌ NO (opcjonalnie jeśli będzie upload rozwiązań)
+Po dodaniu funkcji przypisz użytkownika technicznego do usługi:
+- **Site administration → Plugins → Web services → External services → Docepo Mobile → Authorized users**
+- dodaj konto, które wystawia token dla aplikacji
+
+Wygeneruj token dla tego użytkownika:
+- **Site administration → Server → Web services → Manage tokens**
+- token musi wskazywać na usługę **Docepo Mobile**
+
+### Typowy błąd i znaczenie
+- Komunikat: **"Wyjątek w kontroli dostępu"** przy `core_group_get_course_groups`
+- Znaczy: token/rola nie ma dostępu do funkcji albo do kontekstu kursu/grup
+- Najczęściej brak: przypisania użytkownika do usługi, capability grup, lub dostępu do kursu
 
 ---
 
 ## 4. Przypisanie roli użytkownika
 
-Utworzyć rolę **"Mobile App User"** lub użyć istniejącej roli **Teacher** z capabilities:
+Utworzyć rolę **"Mobile App User"** lub użyć istniejącej roli **Teacher** i przypisać ją użytkownikowi technicznemu w odpowiednich kursach.
 
 ### Wymagane capabilities:
 ```
+webservice/rest:use
 moodle/course:view
 moodle/user:viewdetails
 moodle/site:viewparticipants
+moodle/site:accessallgroups (jeśli kurs używa Separate groups i prowadzący ma widzieć wszystkie grupy)
 mod/assign:view
 mod/assign:grade (jeśli oceny z aplikacji)
 mod/attendance:view
 mod/attendance:takeattendances
 mod/attendance:changeattendances
-webservice/rest:use
 ```
 
-**Można też utworzyć dedykowaną rolę "Teacher via Mobile"** z ograniczonymi uprawnieniami.
+### Wymagania kontekstowe (często pomijane)
+1. Użytkownik techniczny musi mieć dostęp do kursu (enrolment / rola w kursie).
+2. W kursie z ograniczeniami grup sprawdzić, czy konto ma widoczność grup zgodną z polityką.
+3. Jeśli używany jest dedykowany token, upewnić się że token nie jest wygasły i wskazuje na właściwy External Service.
+
+### Szybka checklista dla admina (pod błąd Access Control)
+1. Czy `core_group_get_course_groups` jest dodane do **Docepo Mobile**?
+2. Czy użytkownik jest dodany do **Authorized users** tej usługi?
+3. Czy token został wygenerowany dla tej usługi i tego użytkownika?
+4. Czy użytkownik ma `webservice/rest:use` i dostęp do kursu `courseid`?
+5. Czy polityka grup w kursie nie blokuje odczytu wszystkich grup?
+
+**Można też utworzyć dedykowaną rolę "Teacher via Mobile"** z minimalnym zakresem uprawnień (least privilege).
 
 ---
 
