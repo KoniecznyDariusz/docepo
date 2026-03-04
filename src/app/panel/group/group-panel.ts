@@ -41,7 +41,7 @@ export class GroupPanel implements OnInit, OnDestroy {
   }
 
   private loadCourseAndGroups(courseId: string) {
-    this.eportalService.getCourse(courseId).subscribe(c => this.courseName.set(c?.name));
+    this.eportalService.getCourse(courseId).subscribe(c => this.courseName.set(c?.eportalName));
     this.eportalService.getGroups(courseId).subscribe(groups => {
       this.groups.set(groups);
       this.loadClassDatesForAllGroups();

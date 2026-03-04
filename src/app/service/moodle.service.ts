@@ -53,6 +53,32 @@ export class MoodleService {
   private http = inject(HttpClient);
   private storageService = inject(StorageService);
 
+  private parseEportalCourseName(rawName: string): Pick<Course, 'eportalName' | 'courseCode' | 'courseFormLetter' | 'courseName' | 'courseFormName'> {
+    const eportalName = (rawName || '').trim();
+    const hashParts = eportalName
+      .split('#')
+      .map(part => part.trim())
+      .filter(part => part.length > 0);
+
+    const courseCode = hashParts[0] || '';
+    const courseFormLetter = hashParts[1] || '';
+    const nameAndForm = hashParts[2] || eportalName;
+
+    const formSeparatorIndex = nameAndForm.lastIndexOf(' - ');
+    const hasFormSuffix = formSeparatorIndex > -1;
+
+    const courseName = (hasFormSuffix ? nameAndForm.slice(0, formSeparatorIndex) : nameAndForm).trim() || eportalName;
+    const courseFormName = (hasFormSuffix ? nameAndForm.slice(formSeparatorIndex + 3) : '').trim();
+
+    return {
+      eportalName,
+      courseCode,
+      courseFormLetter,
+      courseName,
+      courseFormName
+    };
+  }
+
   // Przykładowe dane - w przyszłości zastąpione pobieraniem z API
   private students: Student[] = [
     { id: '1', firstName: 'Jan', lastName: 'Kowalski', status: null },
@@ -280,16 +306,20 @@ export class MoodleService {
         const mapCourses = (raw: MoodleCourseResponse[]): Course[] => {
           return raw
             .filter(course => String(course.id).trim().length > 0)
-            .map(course => ({
-              id: String(course.id),
-              name: (
+            .map(course => {
+              const moodleName = (
                 course.fullname ||
                 course.displayname ||
                 course.fullnameformatted ||
                 course.shortname ||
                 `Kurs ${course.id}`
-              ).trim()
-            }));
+              ).trim();
+
+              return {
+                id: String(course.id),
+                ...this.parseEportalCourseName(moodleName)
+              };
+            });
         };
 
         if (Array.isArray(response)) {
