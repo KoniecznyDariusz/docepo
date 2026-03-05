@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from, of, throwError } from 'rxjs';
+import { Observable, forkJoin, from, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { Student } from 'app/model/student.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
@@ -56,9 +56,62 @@ interface MoodleEnrolledUserGroupResponse {
 }
 
 interface MoodleEnrolledUserResponse {
+  id?: number | string;
+  firstname?: string;
+  lastname?: string;
+  fullname?: string;
   groups?: MoodleEnrolledUserGroupResponse[];
   exception?: string;
   message?: string;
+}
+
+interface MoodleAttendanceCourseEntry {
+  id?: number | string;
+  attendance_instances?: Array<{ id?: number | string }>;
+  attendances?: Array<{ id?: number | string }>;
+}
+
+interface MoodleAttendanceCoursesWithTodaySessionsResponse {
+  courses?: MoodleAttendanceCourseEntry[];
+  exception?: string;
+  message?: string;
+}
+
+interface MoodleAttendanceSessionResponse {
+  id?: number | string;
+  sessdate?: number | string;
+  duration?: number | string;
+  description?: string;
+  sessiondescription?: string;
+  groupid?: number | string;
+}
+
+interface MoodleAttendanceSessionsResponse {
+  sessions?: MoodleAttendanceSessionResponse[];
+  exception?: string;
+  message?: string;
+}
+
+interface MoodleAttendanceInstanceSummary {
+  id?: number | string;
+  course?: number | string;
+  courseid?: number | string;
+}
+
+interface MoodleAttendanceGetAttendancesResponse {
+  attendances?: MoodleAttendanceInstanceSummary[];
+  courses?: MoodleAttendanceCourseEntry[];
+  exception?: string;
+  message?: string;
+}
+
+interface MoodleCourseContentModule {
+  modname?: string;
+  instance?: number | string;
+}
+
+interface MoodleCourseContentSection {
+  modules?: MoodleCourseContentModule[];
 }
 
 export interface MoodleCurrentUser {
@@ -137,6 +190,340 @@ export class MoodleService {
     );
   }
 
+  private extractAttendanceInstanceIds(response: MoodleAttendanceCoursesWithTodaySessionsResponse | MoodleAttendanceCourseEntry[], courseId: string): string[] {
+    const courses = Array.isArray(response) ? response : (response.courses || []);
+    const targetCourses = courses.filter(course => String(course.id || '').trim() === String(courseId));
+    const instanceIds = new Set<string>();
+
+    targetCourses.forEach(course => {
+      const instances = [...(course.attendance_instances || []), ...(course.attendances || [])];
+      instances.forEach(instance => {
+        const id = String(instance.id || '').trim();
+        if (id) {
+          instanceIds.add(id);
+        }
+      });
+    });
+
+    return Array.from(instanceIds);
+  }
+
+  private extractAttendanceInstanceIdsFromAllAttendances(response: MoodleAttendanceGetAttendancesResponse | MoodleAttendanceInstanceSummary[], courseId: string): string[] {
+    const instanceIds = new Set<string>();
+
+    if (Array.isArray(response)) {
+      response.forEach(attendance => {
+        const id = String(attendance.id || '').trim();
+        if (id) {
+          instanceIds.add(id);
+        }
+      });
+      return Array.from(instanceIds);
+    }
+
+    const attendances = response.attendances || [];
+    attendances.forEach(attendance => {
+      const id = String(attendance.id || '').trim();
+      if (!id) {
+        return;
+      }
+
+      const attendanceCourseId = String(attendance.course ?? attendance.courseid ?? '').trim();
+      if (!attendanceCourseId || attendanceCourseId === String(courseId)) {
+        instanceIds.add(id);
+      }
+    });
+
+    if (instanceIds.size === 0 && response.courses) {
+      this.extractAttendanceInstanceIds(response.courses, courseId).forEach(id => instanceIds.add(id));
+    }
+
+    return Array.from(instanceIds);
+  }
+
+  private fetchAttendanceInstanceIdsForCourse(moodleUrl: string, courseId: string, currentUserId: number): Observable<string[]> {
+    return this.http.get<MoodleAttendanceGetAttendancesResponse | MoodleAttendanceInstanceSummary[]>(
+      `${moodleUrl}/webservice/rest/server.php`,
+      {
+        params: {
+          wsfunction: 'mod_attendance_get_attendances',
+          'courseids[0]': String(courseId),
+          moodlewsrestformat: 'json'
+        }
+      }
+    ).pipe(
+      map(response => {
+        if (!Array.isArray(response) && response?.exception) {
+          throw new Error(response.message || `Błąd pobierania attendance instances dla kursu ${courseId}.`);
+        }
+
+        const attendanceInstanceIds = this.extractAttendanceInstanceIdsFromAllAttendances(response, courseId);
+        console.info(`[Moodle API] Attendance instances dla kursu ${courseId} (all attendances): ${attendanceInstanceIds.length}`);
+        return attendanceInstanceIds;
+      }),
+      catchError(error => {
+        console.warn(`[Moodle API] mod_attendance_get_attendances nie zwrócił danych dla kursu ${courseId}. Fallback do core_course_get_contents.`, error);
+
+        return this.http.get<MoodleCourseContentSection[] | MoodleSiteInfoResponse>(
+          `${moodleUrl}/webservice/rest/server.php`,
+          {
+            params: {
+              wsfunction: 'core_course_get_contents',
+              courseid: String(courseId),
+              moodlewsrestformat: 'json'
+            }
+          }
+        ).pipe(
+          switchMap(courseContentsResponse => {
+            if (!Array.isArray(courseContentsResponse) && courseContentsResponse?.exception) {
+              throw new Error(courseContentsResponse.message || `Błąd pobierania zawartości kursu ${courseId}.`);
+            }
+
+            const attendanceInstanceIdsFromContents = (Array.isArray(courseContentsResponse) ? courseContentsResponse : [])
+              .flatMap(section => section.modules || [])
+              .filter(module => (module.modname || '').toLowerCase() === 'attendance')
+              .map(module => String(module.instance || '').trim())
+              .filter(instanceId => instanceId.length > 0);
+
+            if (attendanceInstanceIdsFromContents.length > 0) {
+              const uniqueIds = Array.from(new Set(attendanceInstanceIdsFromContents));
+              console.info(`[Moodle API] Attendance instances dla kursu ${courseId} (core_course_get_contents fallback): ${uniqueIds.length}`);
+              return of(uniqueIds);
+            }
+
+            console.warn(`[Moodle API] core_course_get_contents nie zwrócił instancji attendance dla kursu ${courseId}. Fallback do today sessions.`);
+
+            return this.http.get<MoodleAttendanceCoursesWithTodaySessionsResponse | MoodleAttendanceCourseEntry[]>(
+              `${moodleUrl}/webservice/rest/server.php`,
+              {
+                params: {
+                  wsfunction: 'mod_attendance_get_courses_with_today_sessions',
+                  userid: String(currentUserId),
+                  moodlewsrestformat: 'json'
+                }
+              }
+            ).pipe(
+              map(response => {
+                if (!Array.isArray(response) && response?.exception) {
+                  throw new Error(response.message || `Błąd pobierania kursów attendance dla kursu ${courseId}.`);
+                }
+
+                const fallbackInstanceIds = this.extractAttendanceInstanceIds(response, courseId);
+                console.info(`[Moodle API] Attendance instances dla kursu ${courseId} (today sessions fallback): ${fallbackInstanceIds.length}`);
+                return fallbackInstanceIds;
+              })
+            );
+          }),
+          catchError(contentsError => {
+            console.warn(`[Moodle API] core_course_get_contents nie zwrócił danych dla kursu ${courseId}. Ostatni fallback do today sessions.`, contentsError);
+
+            return this.http.get<MoodleAttendanceCoursesWithTodaySessionsResponse | MoodleAttendanceCourseEntry[]>(
+              `${moodleUrl}/webservice/rest/server.php`,
+              {
+                params: {
+                  wsfunction: 'mod_attendance_get_courses_with_today_sessions',
+                  userid: String(currentUserId),
+                  moodlewsrestformat: 'json'
+                }
+              }
+            ).pipe(
+              map(response => {
+                if (!Array.isArray(response) && response?.exception) {
+                  throw new Error(response.message || `Błąd pobierania kursów attendance dla kursu ${courseId}.`);
+                }
+
+                const fallbackInstanceIds = this.extractAttendanceInstanceIds(response, courseId);
+                console.info(`[Moodle API] Attendance instances dla kursu ${courseId} (today sessions fallback): ${fallbackInstanceIds.length}`);
+                return fallbackInstanceIds;
+              })
+            );
+          })
+        );
+      })
+    );
+  }
+
+  private fetchSessionsByCourseIdFallback(moodleUrl: string, courseId: string): Observable<MoodleAttendanceSessionResponse[]> {
+    return this.http.get<MoodleAttendanceSessionsResponse | MoodleAttendanceSessionResponse[]>(
+      `${moodleUrl}/webservice/rest/server.php`,
+      {
+        params: {
+          wsfunction: 'mod_attendance_get_sessions',
+          courseid: String(courseId),
+          moodlewsrestformat: 'json'
+        }
+      }
+    ).pipe(
+      map(response => {
+        if (!Array.isArray(response) && response?.exception) {
+          throw new Error(response.message || `Błąd pobierania sesji attendance po courseid dla kursu ${courseId}.`);
+        }
+
+        const sessions = Array.isArray(response) ? response : (response.sessions || []);
+        console.info(`[Moodle API] Fallback mod_attendance_get_sessions(courseid) dla kursu ${courseId}: ${sessions.length}`);
+        return sessions;
+      })
+    );
+  }
+
+  private mapSessionsToGroups(groups: Group[], sessions: MoodleAttendanceSessionResponse[], courseId: string): Group[] {
+    const classDatesByGroupId = new Map<string, ClassDate[]>();
+    groups.forEach(group => classDatesByGroupId.set(group.id, []));
+
+    sessions.forEach(session => {
+      const sessionId = String(session.id || '').trim();
+      const sessionTimestamp = Number(session.sessdate);
+
+      if (!sessionId || Number.isNaN(sessionTimestamp)) {
+        return;
+      }
+
+      const durationInSeconds = Number(session.duration);
+      const safeDuration = Number.isFinite(durationInSeconds) && durationInSeconds > 0 ? durationInSeconds : 0;
+
+      const startTime = new Date(sessionTimestamp * 1000);
+      const endTime = new Date((sessionTimestamp + safeDuration) * 1000);
+      const classDate: ClassDate = {
+        id: sessionId,
+        startTime,
+        endTime,
+        description: (session.description || session.sessiondescription || 'Zajęcia').trim()
+      };
+
+      const sessionGroupId = String(session.groupid ?? '').trim();
+      const isSpecificGroup = sessionGroupId.length > 0 && sessionGroupId !== '0' && sessionGroupId !== '-1';
+
+      if (isSpecificGroup && classDatesByGroupId.has(sessionGroupId)) {
+        classDatesByGroupId.get(sessionGroupId)!.push(classDate);
+        return;
+      }
+
+      classDatesByGroupId.forEach((dates, groupId) => {
+        dates.push({ ...classDate, id: `${classDate.id}-${groupId}` });
+      });
+    });
+
+    const groupsWithClassDates = groups.map(group => ({
+      ...group,
+      classDates: (classDatesByGroupId.get(group.id) || [])
+        .sort((left, right) => new Date(left.startTime).getTime() - new Date(right.startTime).getTime())
+    }));
+
+    const totalClassDates = groupsWithClassDates.reduce((sum, group) => sum + (group.classDates?.length || 0), 0);
+    console.info(`[Moodle API] Zmapowano terminy z ePortalu dla kursu ${courseId}: ${totalClassDates} (grup: ${groupsWithClassDates.length})`);
+    groupsWithClassDates.forEach(group => {
+      console.info(`[Moodle API] Kurs ${courseId} / grupa ${group.id} (${group.name}) -> terminów na ePortalu: ${group.classDates?.length || 0}`);
+    });
+
+    return groupsWithClassDates;
+  }
+
+  private getCurrentUserId(moodleUrl: string): Observable<number> {
+    return this.http.get<MoodleSiteInfoResponse>(
+      `${moodleUrl}/webservice/rest/server.php`,
+      {
+        params: {
+          wsfunction: 'core_webservice_get_site_info',
+          moodlewsrestformat: 'json'
+        }
+      }
+    ).pipe(
+      map(siteInfo => {
+        const parsedUserId = Number(siteInfo?.userid);
+
+        if (siteInfo?.exception || Number.isNaN(parsedUserId) || parsedUserId <= 0) {
+          throw new Error(siteInfo?.message || 'Nie udało się ustalić ID użytkownika dla attendance.');
+        }
+
+        return parsedUserId;
+      })
+    );
+  }
+
+  private enrichGroupsWithClassDates(moodleUrl: string, courseId: string, groups: Group[]): Observable<Group[]> {
+    if (groups.length === 0) {
+      console.info(`[Moodle API] Brak grup dla kursu ${courseId} - pomijam pobieranie terminów.`);
+      return of(groups);
+    }
+
+    console.info(`[Moodle API] Start pobierania terminów zajęć dla kursu ${courseId}. Grupy: ${groups.length}`);
+
+    return this.getCurrentUserId(moodleUrl).pipe(
+      switchMap(currentUserId => {
+        console.info(`[Moodle API] Attendance: używam userid=${currentUserId} dla kursu ${courseId}.`);
+        return this.fetchAttendanceInstanceIdsForCourse(moodleUrl, courseId, currentUserId);
+      }),
+      switchMap(attendanceInstanceIds => {
+
+        if (attendanceInstanceIds.length === 0) {
+          console.info(`[Moodle API] Brak attendance instances dla kursu ${courseId} (all attendances + fallback). Próba mod_attendance_get_sessions(courseid).`);
+
+          return this.fetchSessionsByCourseIdFallback(moodleUrl, courseId).pipe(
+            map(sessions => {
+              if (sessions.length === 0) {
+                this.updateGroupsCache(courseId, groups);
+                this.classDates = this.groups.flatMap(group => group.classDates || []);
+                return groups;
+              }
+
+              const groupsWithClassDates = this.mapSessionsToGroups(groups, sessions, courseId);
+              this.updateGroupsCache(courseId, groupsWithClassDates);
+              this.classDates = this.groups.flatMap(group => group.classDates || []);
+              return groupsWithClassDates;
+            }),
+            catchError(error => {
+              console.warn(`[Moodle API] Fallback mod_attendance_get_sessions(courseid) nie zwrócił sesji dla kursu ${courseId}.`, error);
+              this.updateGroupsCache(courseId, groups);
+              this.classDates = this.groups.flatMap(group => group.classDates || []);
+              return of(groups);
+            })
+          );
+        }
+
+        console.info(`[Moodle API] Pobieram sesje attendance dla kursu ${courseId} z ${attendanceInstanceIds.length} instancji.`);
+        return forkJoin(
+          attendanceInstanceIds.map(attendanceId =>
+            this.http.get<MoodleAttendanceSessionsResponse | MoodleAttendanceSessionResponse[]>(
+              `${moodleUrl}/webservice/rest/server.php`,
+              {
+                params: {
+                  wsfunction: 'mod_attendance_get_sessions',
+                  attendanceid: attendanceId,
+                  moodlewsrestformat: 'json'
+                }
+              }
+            )
+          )
+        ).pipe(
+          map(sessionResponses => {
+            const sessions = sessionResponses.flatMap(responseItem => {
+              if (!Array.isArray(responseItem) && responseItem?.exception) {
+                console.warn(`[Moodle API] Attendance sessions response exception dla kursu ${courseId}:`, responseItem.message);
+                return [];
+              }
+
+              return Array.isArray(responseItem) ? responseItem : (responseItem.sessions || []);
+            });
+
+            console.info(`[Moodle API] Łączna liczba sesji attendance z ePortalu dla kursu ${courseId}: ${sessions.length}`);
+
+            const groupsWithClassDates = this.mapSessionsToGroups(groups, sessions, courseId);
+
+            this.updateGroupsCache(courseId, groupsWithClassDates);
+            this.classDates = this.groups.flatMap(group => group.classDates || []);
+            return groupsWithClassDates;
+          })
+        );
+      }),
+      catchError(error => {
+        console.warn(`[Moodle API] Nie udało się pobrać terminów zajęć dla kursu ${courseId}:`, error);
+        this.updateGroupsCache(courseId, groups);
+        this.classDates = this.groups.flatMap(group => group.classDates || []);
+        return of(groups);
+      })
+    );
+  }
+
   private parseEportalCourseName(rawName: string): Pick<Course, 'eportalName' | 'courseCode' | 'courseFormLetter' | 'courseName' | 'courseFormName'> {
     const eportalName = (rawName || '').trim();
     const hashParts = eportalName
@@ -163,14 +550,8 @@ export class MoodleService {
     };
   }
 
-  // Przykładowe dane - w przyszłości zastąpione pobieraniem z API
-  private students: Student[] = [
-    { id: '1', firstName: 'Jan', lastName: 'Kowalski', status: null },
-    { id: '2', firstName: 'Anna', lastName: 'Nowak', status: 'P' },
-    { id: '3', firstName: 'Piotr', lastName: 'Wiśniewski', status: 'A' },
-    { id: '4', firstName: 'Maria', lastName: 'Wójcik', status: 'L' },
-    { id: '5', firstName: 'Krzysztof', lastName: 'Zieliński', status: null },
-  ];
+  private students: Student[] = [];
+  private studentsByGroupId = new Map<string, Student[]>();
   private readonly currentClassLeadMinutes = 5;
   private readonly currentClassGraceMinutes = 15;
 
@@ -178,32 +559,8 @@ export class MoodleService {
 
   // Ułatwia tworzenie dat względem "teraz"
   private now = Date.now();
-
-  // Przykładowe dane terminów zajęć
-  private classDates: ClassDate[] = [
-    // c1
-    { id: 'cd1', startTime: new Date(this.now - 60 * 60 * 1000), endTime: new Date(this.now), description: 'Laboratorium - Pętle' },
-    { id: 'cd2', startTime: new Date(this.now + 24 * 60 * 60 * 1000), endTime: new Date(this.now + 25 * 60 * 60 * 1000), description: 'Wykład - Funkcje' },
-
-    // c2 / Grupa A (kilka wcześniejszych i późniejszych terminów)
-    { id: 'cdA1', startTime: new Date(this.now - 7 * 24 * 60 * 60 * 1000), endTime: new Date(this.now - 7 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 1' },
-    { id: 'cdA2', startTime: new Date(this.now - 3 * 24 * 60 * 60 * 1000), endTime: new Date(this.now - 3 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 2' },
-    { id: 'cdA3', startTime: new Date(this.now - 24 * 60 * 60 * 1000), endTime: new Date(this.now - 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 3' },
-    { id: 'cdA_NOW', startTime: new Date(this.now - 15 * 60 * 1000), endTime: new Date(this.now + 75 * 60 * 1000), description: 'Sieci - Lab (bieżące)' },
-    { id: 'cdA4', startTime: new Date(this.now + 24 * 60 * 60 * 1000), endTime: new Date(this.now + 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 4' },
-    { id: 'cdA5', startTime: new Date(this.now + 3 * 24 * 60 * 60 * 1000), endTime: new Date(this.now + 3 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), description: 'Sieci - Lab 5' },
-
-    // c3
-    { id: 'cd4', startTime: new Date(this.now + 48 * 60 * 60 * 1000), endTime: new Date(this.now + 49 * 60 * 60 * 1000), description: 'Zaliczenie - Bazy Danych' },
-  ];
-
-  // Przykładowe dane grup
-  private groups: Group[] = [
-    { id: 'g1', courseId: 'c1', name: 'Grupa 1 (Lab)', classDates: [this.classDates[0]] },
-    { id: 'g2', courseId: 'c1', name: 'Grupa 2 (Wykład)', classDates: [this.classDates[1]] },
-    { id: 'g3', courseId: 'c2', name: 'Grupa A', classDates: [this.classDates[2], this.classDates[3], this.classDates[4], this.classDates[5], this.classDates[6], this.classDates[7]] },
-    { id: 'g4', courseId: 'c3', name: 'Grupa B', classDates: [this.classDates[8]] },
-  ];
+  private classDates: ClassDate[] = [];
+  private groups: Group[] = [];
 
   // Przykładowe dane zadań
   private tasks: Task[] = [
@@ -220,9 +577,82 @@ export class MoodleService {
   private solutions: Solution[] = this.generateSolutions();
 
   getStudents(groupId: string): Observable<Student[]> {
-    // Tutaj w przyszłości będzie wywołanie np. this.http.get<Student[]>(`api/groups/${groupId}/students`)
-    console.log(`Pobieranie studentów dla grupy: ${groupId}`);
-    return of(this.students);
+    const group = this.groups.find(g => g.id === groupId);
+    const courseId = group?.courseId;
+
+    if (!courseId) {
+      console.warn(`[Moodle API] Nie znaleziono group/course dla groupId=${groupId}.`);
+      return of([]);
+    }
+
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.http.get<MoodleEnrolledUserResponse[] | MoodleEnrolledUserResponse>(
+          `${normalizedMoodleUrl}/webservice/rest/server.php`,
+          {
+            params: {
+              wsfunction: 'core_enrol_get_enrolled_users',
+              courseid: String(courseId),
+              moodlewsrestformat: 'json'
+            }
+          }
+        );
+      }),
+      map(response => {
+        if (!Array.isArray(response) && response?.exception) {
+          throw new Error(response.message || `Błąd pobierania studentów dla kursu ${courseId}.`);
+        }
+
+        const users = Array.isArray(response) ? response : [];
+        const usersInGroup = users.filter(user =>
+          Array.isArray(user.groups) && user.groups.some(userGroup => String(userGroup.id) === String(groupId))
+        );
+
+        const source = usersInGroup.length > 0 ? usersInGroup : users;
+        const mappedStudents: Student[] = source
+          .filter(user => String(user.id || '').trim().length > 0)
+          .map(user => {
+            const fullName = (user.fullname || '').trim();
+            const firstName = (user.firstname || '').trim();
+            const lastName = (user.lastname || '').trim();
+
+            if (firstName || lastName) {
+              return {
+                id: String(user.id),
+                firstName: firstName || '-',
+                lastName: lastName || '-',
+                status: null
+              };
+            }
+
+            const parts = fullName.split(' ').filter(Boolean);
+            return {
+              id: String(user.id),
+              firstName: parts.slice(0, -1).join(' ') || fullName || '-',
+              lastName: parts.slice(-1).join(' ') || '-',
+              status: null
+            };
+          })
+          .sort((left, right) =>
+            left.lastName.localeCompare(right.lastName, 'pl', { sensitivity: 'base' }) ||
+            left.firstName.localeCompare(right.firstName, 'pl', { sensitivity: 'base' })
+          );
+
+        this.studentsByGroupId.set(groupId, mappedStudents);
+        console.info(`[Moodle API] Pobrano studentów dla groupId=${groupId}, courseId=${courseId}: ${mappedStudents.length}`);
+        return mappedStudents;
+      }),
+      catchError(error => {
+        console.error(`[Moodle API] Błąd pobierania studentów dla groupId=${groupId}:`, error);
+        return of([]);
+      })
+    );
   }
 
   updateAttendance(studentId: string, status: AttendanceStatus | null, classDateId?: string): Observable<void> {
@@ -231,7 +661,8 @@ export class MoodleService {
     if (classDateId && !this.isCurrentClassDate(classDateId)) {
       console.log(`Nie można zmienić statusu obecności dla terminu ${classDateId}, który nie jest bieżący.`);
     }
-    const targetClassDateId = classDateId || (this.classDates[0] && this.classDates[0].id) || 'cd1';
+    const fallbackClassDateId = this.groups.flatMap(group => group.classDates || [])[0]?.id;
+    const targetClassDateId = classDateId || fallbackClassDateId || 'cd1';
 
     let entry = this.attendances.find(a => a.studentId === studentId && a.classDateId === targetClassDateId);
     if (entry) {
@@ -246,11 +677,16 @@ export class MoodleService {
       this.attendances.push(newEntry);
     }
 
-    // Dla kompatybilności z UI, także aktualizujemy pole status w obiekcie studenta (widoczne na liście)
-    const student = this.students.find(s => s.id === studentId);
-    if (student) {
-      student.status = status;
-    }
+    this.studentsByGroupId.forEach((students, cacheGroupId) => {
+      const studentIndex = students.findIndex(student => student.id === studentId);
+      if (studentIndex < 0) {
+        return;
+      }
+
+      const updated = [...students];
+      updated[studentIndex] = { ...updated[studentIndex], status };
+      this.studentsByGroupId.set(cacheGroupId, updated);
+    });
 
     return of(void 0);
   }
@@ -490,16 +926,21 @@ export class MoodleService {
               courseId: String((rawGroups.find(raw => String(raw.id) === group.id) as MoodleGroupResponse | undefined)?.courseid ?? courseId)
             }));
 
-            this.updateGroupsCache(courseId, groupsFromApi);
-            console.info(`[Moodle API] Pobrano grupy dla kursu ${courseId}: ${groupsFromApi.length}`);
-            return of(groupsFromApi);
+            return this.enrichGroupsWithClassDates(normalizedMoodleUrl, courseId, groupsFromApi).pipe(
+              map(groupsWithClassDates => {
+                console.info(`[Moodle API] Pobrano grupy dla kursu ${courseId}: ${groupsWithClassDates.length}`);
+                return groupsWithClassDates;
+              })
+            );
           }),
           catchError(error => {
             const errorMessage = String(error?.message || '');
 
             if (this.isAccessControlErrorMessage(errorMessage)) {
               console.warn(`[Moodle API] Błąd dostępu przy core_group_get_course_groups dla kursu ${courseId}. Próba fallbacku przez core_enrol_get_enrolled_users.`);
-              return this.fetchGroupsFromEnrolledUsers(normalizedMoodleUrl, courseId);
+              return this.fetchGroupsFromEnrolledUsers(normalizedMoodleUrl, courseId).pipe(
+                switchMap(groupsFromFallback => this.enrichGroupsWithClassDates(normalizedMoodleUrl, courseId, groupsFromFallback))
+              );
             }
 
             return throwError(() => error);
@@ -564,7 +1005,9 @@ export class MoodleService {
 
   // Sprawdza, czy dany termin jest bieżący (odbywa się teraz)
   isCurrentClassDate(classDateId: string): boolean {
-    const classDate = this.classDates.find(cd => cd.id === classDateId);
+    const classDate = this.groups
+      .flatMap(group => group.classDates || [])
+      .find(cd => cd.id === classDateId);
     if (!classDate) {
       return false;
     }

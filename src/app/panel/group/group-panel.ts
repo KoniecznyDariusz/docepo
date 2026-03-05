@@ -42,11 +42,12 @@ export class GroupPanel implements OnInit, OnDestroy {
   }
 
   private loadCourseAndGroups(courseId: string) {
-    this.eportalService.getCourse(courseId).subscribe(c => this.courseName.set(c?.eportalName));
+    this.eportalService.getCourse(courseId).subscribe(c => this.courseName.set(c?.courseName));
     this.eportalService.getGroups(courseId).subscribe({
       next: (groups) => {
         this.groups.set(groups);
         this.groupsErrorMessage.set('');
+        console.info(`[Group Panel] Załadowano grupy dla kursu ${courseId}: ${groups.length}`);
         this.loadClassDatesForAllGroups();
       },
       error: (error) => {
@@ -68,10 +69,16 @@ export class GroupPanel implements OnInit, OnDestroy {
   }
 
   private loadClassDatesForAllGroups() {
+    if (this.groups().length === 0) {
+      console.info('[Group Panel] Brak grup - pomijam ładowanie terminów.');
+      return;
+    }
+
     this.groups().forEach(g => {
       this.eportalService.getCurrentOrNextClassDate(g.id).subscribe(cd => {
         this.groupClassDates.update(prev => ({ ...prev, [g.id]: cd }));
         this.groupAttendanceEnabled.update(prev => ({ ...prev, [g.id]: !!cd && this.eportalService.isCurrentClassDate(cd.id) }));
+        console.info(`[Group Panel] Grupa ${g.id} (${g.name}) -> ${cd ? `termin ${cd.id}` : 'brak terminu'}`);
       });
     });
   }
