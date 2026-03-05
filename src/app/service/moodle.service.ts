@@ -92,6 +92,34 @@ interface MoodleAttendanceSessionsResponse {
   message?: string;
 }
 
+interface MoodleAttendanceStatusDefinition {
+  id?: number | string;
+  acronym?: string;
+}
+
+interface MoodleAttendanceLogEntry {
+  studentid?: number | string;
+  userid?: number | string;
+  id?: number | string;
+  statusid?: number | string;
+  statusacronym?: string;
+  acronym?: string;
+}
+
+interface MoodleAttendanceSessionDetailsResponse {
+  session?: {
+    statuses?: MoodleAttendanceStatusDefinition[];
+    attendance_log?: MoodleAttendanceLogEntry[];
+    users?: MoodleAttendanceLogEntry[];
+  };
+  statuses?: MoodleAttendanceStatusDefinition[];
+  attendance_log?: MoodleAttendanceLogEntry[];
+  users?: MoodleAttendanceLogEntry[];
+  usersstatuses?: MoodleAttendanceLogEntry[];
+  exception?: string;
+  message?: string;
+}
+
 interface MoodleAttendanceInstanceSummary {
   id?: number | string;
   course?: number | string;
@@ -278,6 +306,8 @@ export class MoodleService {
             if (!Array.isArray(courseContentsResponse) && courseContentsResponse?.exception) {
               throw new Error(courseContentsResponse.message || `Błąd pobierania zawartości kursu ${courseId}.`);
             }
+
+            console.info(`[Moodle API] core_course_get_contents raw JSON dla kursu ${courseId}:`, courseContentsResponse);
 
             const attendanceInstanceIdsFromContents = (Array.isArray(courseContentsResponse) ? courseContentsResponse : [])
               .flatMap(section => section.modules || [])
@@ -552,6 +582,8 @@ export class MoodleService {
 
   private students: Student[] = [];
   private studentsByGroupId = new Map<string, Student[]>();
+  private attendanceStatusIdBySession = new Map<string, Map<Exclude<AttendanceStatus, null>, string>>();
+  private attendanceCacheByClassDateId = new Map<string, Attendance[]>();
   private readonly currentClassLeadMinutes = 5;
   private readonly currentClassGraceMinutes = 15;
 
@@ -570,8 +602,7 @@ export class MoodleService {
     { id: 't4', courseId: 'c2', name: 'L04', description: 'Zaawansowane algorytmy', maxPoints: 100, dueDate: new Date(this.now + 28 * 24 * 60 * 60 * 1000) }
   ];
 
-  // Przykładowe dane obecności (attendance) dla wszystkich kombinacji studentów × terminów
-  private attendances: Attendance[] = this.generateAttendances();
+  private attendances: Attendance[] = [];
 
   // Przykładowe dane rozwiązań (solutions) dla wszystkich kombinacji studentów × zadań
   private solutions: Solution[] = this.generateSolutions();
@@ -655,73 +686,308 @@ export class MoodleService {
     );
   }
 
-  updateAttendance(studentId: string, status: AttendanceStatus | null, classDateId?: string): Observable<void> {
-    // Zaktualizuj wpis obecności dla danego studenta i terminu zajęć.
-    // Jeśli classDateId nie podano, używamy pierwszego znanego terminu (dla prostoty przykładu).
+  private getRawSessionId(classDateId: string): string {
+    const [rawSessionId] = String(classDateId || '').split('-');
+    return rawSessionId?.trim() || String(classDateId || '').trim();
+  }
+
+  private toAttendanceStatus(value: string | null | undefined): AttendanceStatus {
+    const normalized = String(value || '').trim().toUpperCase();
+    if (normalized === 'P' || normalized === 'A' || normalized === 'L') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private extractStatusIdMap(details: MoodleAttendanceSessionDetailsResponse, classDateId: string): Map<Exclude<AttendanceStatus, null>, string> {
+    const statusDefinitions = [
+      ...(details.session?.statuses || []),
+      ...(details.statuses || [])
+    ];
+
+    const mapByAcronym = new Map<Exclude<AttendanceStatus, null>, string>();
+    statusDefinitions.forEach(status => {
+      const acronym = this.toAttendanceStatus(status.acronym);
+      const id = String(status.id || '').trim();
+      if (!acronym || !id) {
+        return;
+      }
+      mapByAcronym.set(acronym, id);
+    });
+
+    this.attendanceStatusIdBySession.set(this.getRawSessionId(classDateId), mapByAcronym);
+    return mapByAcronym;
+  }
+
+  private extractAttendanceEntries(details: MoodleAttendanceSessionDetailsResponse): MoodleAttendanceLogEntry[] {
+    return [
+      ...(details.session?.attendance_log || []),
+      ...(details.attendance_log || []),
+      ...(details.usersstatuses || []),
+      ...(details.session?.users || []),
+      ...(details.users || [])
+    ];
+  }
+
+  private fetchAttendanceSessionDetails(moodleUrl: string, classDateId: string): Observable<MoodleAttendanceSessionDetailsResponse> {
+    const rawSessionId = this.getRawSessionId(classDateId);
+
+    const requestBySessionId = (paramName: 'sessionid' | 'sessid') => this.http.get<MoodleAttendanceSessionDetailsResponse>(
+      `${moodleUrl}/webservice/rest/server.php`,
+      {
+        params: {
+          wsfunction: 'mod_attendance_get_session',
+          [paramName]: rawSessionId,
+          moodlewsrestformat: 'json'
+        }
+      }
+    );
+
+    return requestBySessionId('sessionid').pipe(
+      catchError(() => requestBySessionId('sessid')),
+      map(response => {
+        if (response?.exception) {
+          throw new Error(response.message || `Błąd pobierania sesji attendance ${rawSessionId}.`);
+        }
+        return response;
+      })
+    );
+  }
+
+  private cacheAttendanceForClassDate(classDateId: string, attendance: Attendance[]): void {
+    this.attendanceCacheByClassDateId.set(classDateId, attendance);
+
+    const byKey = new Map<string, Attendance>();
+    this.attendances.forEach(item => byKey.set(`${item.classDateId}:${item.studentId}`, item));
+    attendance.forEach(item => byKey.set(`${item.classDateId}:${item.studentId}`, item));
+    this.attendances = Array.from(byKey.values());
+  }
+
+  updateAttendance(studentId: string, status: Exclude<AttendanceStatus, null>, classDateId?: string): Observable<void> {
     if (classDateId && !this.isCurrentClassDate(classDateId)) {
       console.log(`Nie można zmienić statusu obecności dla terminu ${classDateId}, który nie jest bieżący.`);
     }
-    const fallbackClassDateId = this.groups.flatMap(group => group.classDates || [])[0]?.id;
-    const targetClassDateId = classDateId || fallbackClassDateId || 'cd1';
 
-    let entry = this.attendances.find(a => a.studentId === studentId && a.classDateId === targetClassDateId);
-    if (entry) {
-      entry.status = status;
-    } else {
-      const newEntry: Attendance = {
-        id: `a${this.attendances.length + 1}`,
-        studentId,
-        classDateId: targetClassDateId,
-        status
-      };
-      this.attendances.push(newEntry);
+    const fallbackClassDateId = this.groups.flatMap(group => group.classDates || [])[0]?.id;
+    const targetClassDateId = classDateId || fallbackClassDateId;
+
+    if (!targetClassDateId) {
+      return of(void 0);
     }
 
-    this.studentsByGroupId.forEach((students, cacheGroupId) => {
-      const studentIndex = students.findIndex(student => student.id === studentId);
-      if (studentIndex < 0) {
-        return;
-      }
+    const updateLocalCaches = () => {
+      this.attendanceCacheByClassDateId.forEach((items, cacheClassDateId) => {
+        const index = items.findIndex(item => item.studentId === studentId);
+        if (index < 0) {
+          return;
+        }
 
-      const updated = [...students];
-      updated[studentIndex] = { ...updated[studentIndex], status };
-      this.studentsByGroupId.set(cacheGroupId, updated);
-    });
+        const updated = [...items];
+        updated[index] = { ...updated[index], status };
+        this.attendanceCacheByClassDateId.set(cacheClassDateId, updated);
+      });
 
-    return of(void 0);
+      this.attendances = this.attendances.map(item =>
+        item.studentId === studentId && item.classDateId === targetClassDateId
+          ? { ...item, status }
+          : item
+      );
+    };
+
+    if (!status) {
+      console.warn(`[Moodle API] Odrzucono próbę zapisu pustego statusu dla studentId=${studentId}, classDateId=${targetClassDateId}.`);
+      return of(void 0);
+    }
+
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.fetchAttendanceSessionDetails(normalizedMoodleUrl, targetClassDateId).pipe(
+          switchMap(details => {
+            const statusIdMap = this.extractStatusIdMap(details, targetClassDateId);
+            const targetStatusId = statusIdMap.get(status);
+
+            if (!targetStatusId) {
+              throw new Error(`Brak mapowania statusu ${status} w sesji ${targetClassDateId}.`);
+            }
+
+            return this.getCurrentUserId(normalizedMoodleUrl).pipe(
+              switchMap(currentUserId => {
+                const rawSessionId = this.getRawSessionId(targetClassDateId);
+                const baseParams = {
+                  wsfunction: 'mod_attendance_update_user_status',
+                  statusid: targetStatusId,
+                  moodlewsrestformat: 'json'
+                };
+
+                const requestVariants: Array<Record<string, string>> = [
+                  {
+                    ...baseParams,
+                    sessionid: rawSessionId,
+                    studentid: String(studentId),
+                    takenbyid: String(currentUserId),
+                    statusset: 'M'
+                  },
+                  {
+                    ...baseParams,
+                    sessionid: rawSessionId,
+                    userid: String(studentId),
+                    takenbyid: String(currentUserId),
+                    statusset: 'M'
+                  },
+                  {
+                    ...baseParams,
+                    sessid: rawSessionId,
+                    studentid: String(studentId),
+                    takenbyid: String(currentUserId),
+                    statusset: 'M'
+                  },
+                  {
+                    ...baseParams,
+                    sessid: rawSessionId,
+                    userid: String(studentId),
+                    takenbyid: String(currentUserId),
+                    statusset: 'M'
+                  },
+                  {
+                    ...baseParams,
+                    sessionid: rawSessionId,
+                    studentid: String(studentId),
+                    takenbyid: String(currentUserId)
+                  },
+                  {
+                    ...baseParams,
+                    sessid: rawSessionId,
+                    studentid: String(studentId),
+                    takenbyid: String(currentUserId)
+                  }
+                ];
+
+                const tryUpdateVariant = (index: number): Observable<void> => {
+                  if (index >= requestVariants.length) {
+                    return throwError(() => new Error(`Błąd zapisu obecności dla studentId=${studentId}: wszystkie warianty parametrów zostały odrzucone.`));
+                  }
+
+                  const params = requestVariants[index];
+                  return this.http.post<MoodleAttendanceSessionDetailsResponse>(
+                    `${normalizedMoodleUrl}/webservice/rest/server.php`,
+                    null,
+                    { params }
+                  ).pipe(
+                    map(response => {
+                      if (response?.exception) {
+                        throw new Error(response.message || `Wariant #${index + 1}: błąd zapisu obecności.`);
+                      }
+
+                      updateLocalCaches();
+                      console.info(`[Moodle API] Zapisano obecność: studentId=${studentId}, classDateId=${targetClassDateId}, status=${status}, wariant=${index + 1}`);
+                      return void 0;
+                    }),
+                    catchError(error => {
+                      console.warn(`[Moodle API] Odrzucony wariant zapisu obecności #${index + 1}:`, params, error);
+                      return tryUpdateVariant(index + 1);
+                    })
+                  );
+                };
+
+                return tryUpdateVariant(0);
+              })
+            );
+          })
+        );
+      })
+    );
   }
 
   // Pobiera wpisy obecności dla konkretnego studenta w kontekście danej grupy.
   // Zwraca wszystkie attendance dla studentId, których classDateId należy do terminów tej grupy.
   getAttendancesForStudent(studentId: string, groupId: string): Observable<Attendance[]> {
     const group = this.groups.find(g => g.id === groupId);
-    if (!group) {
+    if (!group || !group.classDates || group.classDates.length === 0) {
       return of([]);
     }
 
-    const classDateById = new Map((group.classDates || []).map(cd => [cd.id, cd]));
-    const list = this.attendances
-      .filter(a => a.studentId === studentId && classDateById.has(a.classDateId))
-      .sort((a, b) => {
-        const classDateA = classDateById.get(a.classDateId);
-        const classDateB = classDateById.get(b.classDateId);
-        if (!classDateA || !classDateB) return 0;
-        return new Date(classDateA.startTime).getTime() - new Date(classDateB.startTime).getTime();
-      });
-    console.log('getAttendancesForStudent',list);
-    return of(list);
+    const dateByClassDateId = new Map(group.classDates.map(classDate => [classDate.id, classDate]));
+    return forkJoin(group.classDates.map(classDate => this.getAttendancesForClassDate(classDate.id))).pipe(
+      map(attendanceLists =>
+        attendanceLists
+          .flat()
+          .filter(attendance => attendance.studentId === studentId && dateByClassDateId.has(attendance.classDateId))
+          .sort((left, right) =>
+            new Date(dateByClassDateId.get(left.classDateId)!.startTime).getTime() -
+            new Date(dateByClassDateId.get(right.classDateId)!.startTime).getTime()
+          )
+      )
+    );
   }
 
   // Pobiera wpisy obecności dla konkretnego terminu zajęć
   getAttendancesForClassDate(classDateId: string): Observable<Attendance[]> {
-    const list = this.attendances.filter(a => a.classDateId === classDateId);
-    return of(list);
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.fetchAttendanceSessionDetails(normalizedMoodleUrl, classDateId).pipe(
+          map(details => {
+            const statusIdMap = this.extractStatusIdMap(details, classDateId);
+            const acronymByStatusId = new Map<string, Exclude<AttendanceStatus, null>>();
+            statusIdMap.forEach((statusId, acronym) => {
+              acronymByStatusId.set(statusId, acronym);
+            });
+
+            const attendanceEntries = this.extractAttendanceEntries(details);
+            const attendances = attendanceEntries
+              .map(entry => {
+                const dynamicEntry = entry as unknown as Record<string, unknown>;
+                const studentId = String(
+                  entry.studentid ??
+                  entry.userid ??
+                  (dynamicEntry['student_id'] as number | string | undefined) ??
+                  (dynamicEntry['user_id'] as number | string | undefined) ??
+                  ((dynamicEntry['student'] as { id?: number | string } | undefined)?.id) ??
+                  ((dynamicEntry['user'] as { id?: number | string } | undefined)?.id) ??
+                  ''
+                ).trim();
+                if (!studentId) {
+                  return null;
+                }
+
+                const explicitAcronym = this.toAttendanceStatus(entry.statusacronym || entry.acronym);
+                const statusId = String(entry.statusid || '').trim();
+                const status = explicitAcronym || (statusId ? acronymByStatusId.get(statusId) || null : null);
+
+                return {
+                  id: `${classDateId}:${studentId}`,
+                  studentId,
+                  classDateId,
+                  status
+                } as Attendance;
+              })
+              .filter((attendance): attendance is Attendance => !!attendance);
+
+            this.cacheAttendanceForClassDate(classDateId, attendances);
+            return attendances;
+          })
+        );
+      }),
+      catchError(error => {
+        console.error(`[Moodle API] Błąd pobierania obecności dla classDateId=${classDateId}:`, error);
+        return of(this.attendanceCacheByClassDateId.get(classDateId) || []);
+      })
+    );
   }
 
   // Pobierz attendance po jego id
   getAttendanceById(attendanceId: string): Observable<Attendance | undefined> {
-    const entry = this.attendances.find(a => a.id === attendanceId);
-    return of(entry);
+    const fromCache = this.attendances.find(attendance => attendance.id === attendanceId);
+    return of(fromCache);
   }
 
   // Znajdź grupę zawierającą dany classDateId
@@ -1069,32 +1335,6 @@ export class MoodleService {
       Object.assign(solution, updates);
     }
     return of(void 0);
-  }
-
-  // Wygeneruj wszystkie wpisy attendance dla każdej kombinacji studenta × classDate
-  private generateAttendances(): Attendance[] {
-    const attendances: Attendance[] = [];
-    const statuses: AttendanceStatus[] = ['P', 'A', 'L', null];
-    let id = 1;
-
-    const now = new Date();
-
-    this.classDates.forEach(classDate => {
-      const isFuture = new Date(classDate.startTime) > now;
-
-      this.students.forEach((student, idx) => {
-        const status = isFuture ? null : statuses[idx % statuses.length];
-        attendances.push({
-          id: `a${id}`,
-          studentId: student.id,
-          classDateId: classDate.id,
-          status: status === null ? null : status
-        });
-        id++;
-      });
-    });
-
-    return attendances;
   }
 
   // Wygeneruj wszystkie wpisy solutions dla każdej kombinacji studenta × zadania

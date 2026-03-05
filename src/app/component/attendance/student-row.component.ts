@@ -33,14 +33,17 @@ import { AttendanceStatus } from "app/model/AttendanceStatus.model";
 export class StudentRowComponent {
   student = input.required<Student>();
   index = input.required<number>();
-  onStatusChange = output<{studentId: string, status: AttendanceStatus | null}>();
+  onStatusChange = output<{studentId: string, status: Exclude<AttendanceStatus, null>}>();
   onProfileClick = output<string>();
 
   readonly attendanceTypes: AttendanceStatus[] = ['P', 'A', 'L'];
 
   handleAttendanceClick(status: AttendanceStatus) {
     const currentStatus = this.student().status;
-    const newStatus = currentStatus === status ? null : status;
-    this.onStatusChange.emit({studentId: this.student().id, status: newStatus});
+    if (currentStatus === status) {
+      return;
+    }
+
+    this.onStatusChange.emit({studentId: this.student().id, status: status as Exclude<AttendanceStatus, null>});
   }
 }

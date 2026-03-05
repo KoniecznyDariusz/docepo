@@ -47,30 +47,52 @@ export class StudentListComponent {
   students = signal<Student[]>([]);
   private lastAutoScrolledSelectedId = signal<string | null>(null);
 
+  private applyAttendanceStatuses(classDateId: string): void {
+    const currentStudents = this.students();
+    if (currentStudents.length === 0) {
+      return;
+    }
+
+    this.eportalService.getAttendancesForClassDate(classDateId).subscribe(attendances => {
+      const statusByStudentId = new Map(attendances.map(attendance => [attendance.studentId, attendance.status]));
+      const mappedStudents = currentStudents.map(student => ({
+        ...student,
+        status: statusByStudentId.has(student.id) ? statusByStudentId.get(student.id)! : null
+      }));
+      this.students.set(mappedStudents);
+    });
+  }
+
+  private loadStudents(groupId: string, classDateId?: string): void {
+    this.eportalService.getStudents(groupId).subscribe(list => {
+      this.students.set(list || []);
+
+      if (classDateId) {
+        this.applyAttendanceStatuses(classDateId);
+      }
+    });
+  }
+
   constructor() {
     // Watch groupId input changes
     effect(() => {
       const gid = this.groupId();
       const classDateId = this.classDateId();
-      if (gid) {
-        this.eportalService.getStudents(gid).subscribe(list => {
-          const students = list || [];
-          if (!classDateId) {
-            this.students.set(students);
-            return;
-          }
 
-          this.eportalService.getAttendancesForClassDate(classDateId).subscribe(attendances => {
-            const statusByStudentId = new Map(attendances.map(a => [a.studentId, a.status]));
-            const mappedStudents = students.map(student => ({
-              ...student,
-              status: statusByStudentId.has(student.id) ? statusByStudentId.get(student.id)! : null
-            }));
-            this.students.set(mappedStudents);
-          });
-        });
+      if (gid) {
+        this.loadStudents(gid, classDateId || undefined);
       } else {
         this.students.set([]);
+      }
+    });
+
+    // Refresh statusów po powrocie z panelu studenta (selected query param)
+    effect(() => {
+      const selectedId = this.selectedStudentId();
+      const classDateId = this.classDateId();
+
+      if (selectedId && classDateId) {
+        this.applyAttendanceStatuses(classDateId);
       }
     });
 
@@ -101,11 +123,12 @@ export class StudentListComponent {
     });
   }
 
-  updateStatus(event: {studentId: string, status: AttendanceStatus | null}) {
+  updateStatus(event: {studentId: string, status: Exclude<AttendanceStatus, null>}) {
     this.eportalService.updateAttendance(event.studentId, event.status, this.classDateId()).subscribe(() => {
-      this.students.update(list => list.map(student =>
-        student.id === event.studentId ? { ...student, status: event.status } : student
-      ));
+      const classDateId = this.classDateId();
+      if (classDateId) {
+        this.applyAttendanceStatuses(classDateId);
+      }
       this.scrollToNext();
     });
   }

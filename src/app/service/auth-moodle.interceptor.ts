@@ -25,6 +25,7 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
   ])).pipe(
     switchMap(([oauthToken, wsToken]) => {
       let authReq = req;
+      const wsFunction = getWsFunctionName(req);
 
       if (oauthToken) {
         // Dodaj Authorization header z Bearer token
@@ -43,7 +44,11 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
           }
         });
         if (!environment.production) {
-          console.info('[Auth] Request autoryzowany przez Moodle wstoken:', req.url, wsToken);
+          if (wsFunction === 'mod_attendance_update_user_status') {
+            console.info('[Auth] WS token -> zapis obecności:', wsFunction);
+          } else {
+            console.info('[Auth] WS token ->', wsFunction || 'unknown wsfunction');
+          }
         }
       }
 
@@ -81,6 +86,10 @@ function shouldInterceptRequest(req: HttpRequest<any>): boolean {
 function isWebServiceRestRequest(req: HttpRequest<any>): boolean {
   const url = req.url.toLowerCase();
   return url.includes('/webservice/rest/server.php') && !req.params.has('wstoken');
+}
+
+function getWsFunctionName(req: HttpRequest<any>): string {
+  return req.params.get('wsfunction') || '';
 }
 
 /**
