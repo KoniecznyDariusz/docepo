@@ -35,7 +35,7 @@ export const authMoodleInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, 
           }
         });
         if (!environment.production) {
-          console.info('[Auth] Request autoryzowany przez OAuth2 Bearer token:', req.url);
+          console.info('[Auth] Request autoryzowany przez OAuth2 Bearer token.');
         }
       } else if (wsToken && isWebServiceRestRequest(req)) {
         authReq = req.clone({

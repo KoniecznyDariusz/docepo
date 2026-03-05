@@ -46,7 +46,7 @@ export class AuthMoodleService {
    */
   private initializeAuthListener(): void {
     App.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
-      console.log('App URL opened:', event.url);
+      console.log('App URL opened.');
       
       // Sprawdź czy to callback OAuth2
       if (event.url.startsWith('pl.docentus.docepo://oauth')) {
@@ -124,7 +124,7 @@ export class AuthMoodleService {
         codeChallenge
       );
 
-      console.log('Opening OAuth URL:', authUrl);
+      console.log('Opening OAuth URL.');
 
       // Otwórz przeglądarkę systemową dla logowania
       await Browser.open({ 

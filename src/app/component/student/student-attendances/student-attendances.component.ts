@@ -43,14 +43,18 @@ export class StudentAttendancesComponent {
         const group = this.moodle.ensureGroupWithClassDates(gid, true);
         group.subscribe(g => {
           const map: Record<string,{date: string, description: string}> = {};
+          const classDateById = new Map((g?.classDates || []).map(classDate => [classDate.id, classDate]));
+          const shownClassDateIds = Array.from(new Set((list || []).map(attendance => attendance.classDateId)));
 
-          (g?.classDates || []).forEach(cd => {
-            const fallbackDate = new Date(cd.startTime).toISOString().split('T')[0];
-            const serverInfo = this.moodle.getSessionDisplayInfo(cd.id);
+          shownClassDateIds.forEach(classDateId => {
+            const cd = classDateById.get(classDateId);
+            const fallbackDate = cd ? new Date(cd.startTime).toISOString().split('T')[0] : '-';
+            const fallbackDescription = cd?.description || `Termin ${fallbackDate}`;
+            const serverInfo = this.moodle.getSessionDisplayInfo(classDateId);
 
-            map[cd.id] = {
+            map[classDateId] = {
               date: serverInfo?.date || fallbackDate,
-              description: serverInfo?.description || cd.description || `Termin ${fallbackDate}`
+              description: serverInfo?.description || fallbackDescription
             };
           });
 

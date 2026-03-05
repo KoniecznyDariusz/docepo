@@ -46,6 +46,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
         this.eportalService.getGroupByClassDateId(classDateId).subscribe(g => {
           this.group.set(g);
           if (g) {
+            this.eportalService.setActiveAttendanceGroupId(g.id);
             this.backNav.setBackUrl(`/groups/${g.courseId}`);
 
             this.eportalService.getCourse(g.courseId).subscribe(course => {
@@ -61,6 +62,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.eportalService.setActiveAttendanceGroupId(null);
     this.backNav.clearBackUrl();
   }
 

@@ -40,6 +40,7 @@ export class StudentPanel implements OnInit, OnDestroy {
       const studentId = params['studentId'];
       const groupIdParam = params['groupId'];
       this.groupId.set(groupIdParam);
+      this.eportalService.setActiveAttendanceGroupId(groupIdParam);
 
       if (studentId && groupIdParam) {
         this.eportalService.getGroup(groupIdParam).subscribe(g => {
@@ -66,6 +67,7 @@ export class StudentPanel implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.eportalService.setActiveAttendanceGroupId(null);
     this.backNav.clearBackUrl();
   }
 
