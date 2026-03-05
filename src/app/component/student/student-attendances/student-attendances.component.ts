@@ -31,28 +31,31 @@ export class StudentAttendancesComponent {
     effect(() => {
       const sid = this.studentId();
       const gid = this.groupId();
+      const currentClassDateId = this.currentClassDateId();
       if (!sid || !gid) {
         this.attendances.set([]);
         return;
       }
 
-      this.moodle.getAttendancesForStudent(sid, gid).subscribe(list => {
+      this.moodle.getAttendancesForStudent(sid, gid, currentClassDateId).subscribe(list => {
         this.attendances.set(list || []);
-      });
 
-      // cache classDate descriptions and dates for display
-      const group = this.moodle.getGroup(gid);
-      group.subscribe(g => {
-        const map: Record<string,{date: string, description: string}> = {};
-        (g?.classDates || []).forEach(cd => {
-          const date = new Date(cd.startTime);
-          const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-          map[cd.id] = {
-            date: dateStr,
-            description: cd.description || `Termin ${dateStr}`
-          };
+        const group = this.moodle.ensureGroupWithClassDates(gid, true);
+        group.subscribe(g => {
+          const map: Record<string,{date: string, description: string}> = {};
+
+          (g?.classDates || []).forEach(cd => {
+            const fallbackDate = new Date(cd.startTime).toISOString().split('T')[0];
+            const serverInfo = this.moodle.getSessionDisplayInfo(cd.id);
+
+            map[cd.id] = {
+              date: serverInfo?.date || fallbackDate,
+              description: serverInfo?.description || cd.description || `Termin ${fallbackDate}`
+            };
+          });
+
+          this.classDatesMap.set(map);
         });
-        this.classDatesMap.set(map);
       });
     });
   }
