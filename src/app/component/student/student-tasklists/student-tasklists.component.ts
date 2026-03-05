@@ -1,7 +1,7 @@
 import { Component, input, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { Solution } from 'app/model/solution.model';
 import { Task } from 'app/model/task.model';
 import { SolutionSettings } from 'app/setting/solution.settings';
@@ -20,7 +20,7 @@ export class StudentTasklistsComponent {
   groupId = input<string | undefined>();
   classDateId = input<string | undefined>();
 
-  private moodle = inject(MoodleService);
+  private moodle = inject(AppicationDataService);
   private router = inject(Router);
 
   solutions = signal<Solution[]>([]);

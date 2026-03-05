@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { DatePipe } from '@angular/common';
 
-import { MoodleService } from 'app/service/moodle.service';
+import { ApplicationDataService } from 'app/service/application-data.service';
 import { CoursePanel } from './course-panel';
 
 describe('CoursePanel', () => {
@@ -12,7 +12,7 @@ describe('CoursePanel', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CoursePanel, RouterTestingModule],
-      providers: [DatePipe, MoodleService]
+      providers: [DatePipe, ApplicationDataService]
     })
     .compileComponents();
 

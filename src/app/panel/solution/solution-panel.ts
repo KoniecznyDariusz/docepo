@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { Solution } from 'app/model/solution.model';
 import { Task } from 'app/model/task.model';
 import { Student } from 'app/model/student.model';
@@ -45,7 +45,7 @@ export class SolutionPanel implements OnInit {
   showDeleteModal = signal(false);
 
   private route = inject(ActivatedRoute);
-  private moodle = inject(MoodleService);
+  private moodle = inject(AppicationDataService);
   private backNav = inject(BackNavigationService);
 
   ngOnInit(): void {

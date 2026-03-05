@@ -1,6 +1,6 @@
 import { Component, input, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { Attendance } from 'app/model/attendance.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 import { AttendanceSettings } from 'app/setting/attendance.settings';
@@ -18,7 +18,7 @@ export class StudentAttendancesComponent {
   groupId = input<string | undefined>();
   currentClassDateId = input<string | undefined>();
 
-  private moodle = inject(MoodleService);
+  private moodle = inject(AppicationDataService);
   attendances = signal<Attendance[]>([]);
   classDatesMap = signal<Record<string,{date: string, description: string}>>({});
   

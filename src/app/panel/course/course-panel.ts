@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Course } from 'app/model/course.model';
-import { MoodleService, MoodleCurrentUser } from 'app/service/moodle.service';
+import { AppicationDataService, MoodleCurrentUser } from 'app/service/application-data.service';
 import { ActivatedRoute } from '@angular/router';
 import { BackNavigationService } from 'app/service/back-navigation.service';
 import { FooterComponent } from 'app/component/footer/footer.component';
@@ -15,7 +15,7 @@ import { AuthMoodleService } from 'app/service/auth-moodle.service';
   styleUrl: './course-panel.css',
 })
 export class CoursePanel implements OnInit, OnDestroy {
-  private eportalService = inject(MoodleService);
+  private eportalService = inject(AppicationDataService);
   private route = inject(ActivatedRoute);
   private backNav = inject(BackNavigationService);
   private authService = inject(AuthMoodleService);

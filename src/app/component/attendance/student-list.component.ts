@@ -2,7 +2,7 @@ import { Component, inject, ViewChild, ElementRef, signal, effect, input, output
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { StudentRowComponent } from './student-row.component';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
 import { Student } from 'app/model/student.model';
 
@@ -36,7 +36,7 @@ import { Student } from 'app/model/student.model';
 })
 export class StudentListComponent {
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
-  private eportalService = inject(MoodleService);
+  private eportalService = inject(AppicationDataService);
   private router = inject(Router);
 
   groupId = input<string | undefined>();

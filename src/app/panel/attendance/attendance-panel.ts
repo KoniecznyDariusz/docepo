@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
 import { ClassDate } from 'app/model/classDate.model';
@@ -29,7 +29,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private eportalService = inject(MoodleService);
+  private eportalService = inject(AppicationDataService);
   private backNav = inject(BackNavigationService);
 
   ngOnInit() {

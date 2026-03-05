@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { GroupListComponent } from 'app/component/group-list/group-list.component';
@@ -25,7 +25,7 @@ export class GroupPanel implements OnInit, OnDestroy {
   courseName = signal<string | undefined>(undefined);
 
   private route = inject(ActivatedRoute);
-  private eportalService = inject(MoodleService);
+  private eportalService = inject(AppicationDataService);
   private backNav = inject(BackNavigationService);
 
   ngOnInit(): void {

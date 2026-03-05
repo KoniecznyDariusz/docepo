@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { MoodleService } from 'app/service/moodle.service';
+import { AppicationDataService } from 'app/service/application-data.service';
 import { Student } from 'app/model/student.model';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
@@ -28,7 +28,7 @@ export class StudentPanel implements OnInit, OnDestroy {
   showInfoModal = signal(false);
 
   private route = inject(ActivatedRoute);
-  private eportalService = inject(MoodleService);
+  private eportalService = inject(AppicationDataService);
   private backNav = inject(BackNavigationService);
 
   ngOnInit() {
