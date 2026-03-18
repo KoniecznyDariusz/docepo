@@ -1,5 +1,5 @@
 <div class="solution-panel h-screen flex flex-col bg-gray-900 text-white">
-  <app-header [title]="task() ? task()!.name + (task()!.description ? ' - ' + task()!.description : '') : undefined"></app-header>
+  <app-header [title]="task() ? getTaskDisplayTitle(task()) : undefined"></app-header>
 
   <main class="flex-1 overflow-auto p-4 space-y-4">
     @if (solution() && task()) {

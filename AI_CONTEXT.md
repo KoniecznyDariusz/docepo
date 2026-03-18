@@ -1,5 +1,8 @@
 ## Docepo – kontekst projektu dla AI
 
+### Dokumentacja integracji Moodle
+- Szczegolowy przeplyw danych (odczyt/zapis, mapowanie pol, kolejnosc endpointow, checklista zmian): [MOODLE_DATA_FLOW.md](MOODLE_DATA_FLOW.md)
+
 ### 1) Cel aplikacji
 Docepo to aplikacja wspomagająca nauczyciela akademickiego w bieżącym prowadzeniu zajęć.
 
@@ -265,4 +268,8 @@ Przed zamknięciem zadania AI powinno potwierdzić:
 3) DI używa `inject()` (chyba że istnieje jasny powód pozostawienia konstruktora).
 4) Template używa nowego control flow (`@if/@for/@switch`) i odczytu sygnałów przez `mySignal()`.
 5) Po zmianach przechodzi `npm run build` i nie ma nowych błędów TypeScript/template.
-
+6) Granice serwisów są zachowane:
+	- `ApplicationDataService`: orkiestracja scenariuszy, cache/stany aplikacji, mapowanie do modeli domenowych, reguły produktowe/fallbacki UX.
+	- `MoodleService`: wywołania HTTP Moodle REST (`core_*`, `mod_*`), normalizacja odpowiedzi API i fallbacki techniczne na poziomie integracji.
+7) Refaktor nie przenosi logiki decydującej o zachowaniu paneli, cache lub modeli domenowych do warstwy integracyjnej.
+8) Przenoszone są tylko elementy będące „stateless adapterem API”; w razie wątpliwości preferowana jest minimalna zmiana.

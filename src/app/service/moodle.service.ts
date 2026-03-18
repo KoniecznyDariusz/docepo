@@ -2,8 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { MoodleAttendanceUpdateUserStatusParams, MoodleRestParams } from 'app/model/moodle/moodle-params.model';
+import { MoodleAssignSaveGradeParams, MoodleAttendanceUpdateUserStatusParams, MoodleRestParams } from 'app/model/moodle/moodle-params.model';
 import {
+  MoodleAssignAssignmentsResponse,
+  MoodleAssignGradesResponse,
+  MoodleAssignSubmissionsResponse,
   MoodleAttendanceSessionResponse,
   MoodleAttendanceSessionsResponse,
   MoodleAttendanceLogEntry,
@@ -111,6 +114,227 @@ export class MoodleService {
     });
   }
 
+  coreCourseGetCourseModule<T>(moodleUrl: string, cmid: string): Observable<T> {
+    return this.get<T>(moodleUrl, {
+      wsfunction: 'core_course_get_course_module',
+      cmid: String(cmid),
+      moodlewsrestformat: 'json'
+    });
+  }
+
+  modAssignGetAssignments(moodleUrl: string, courseId: string): Observable<MoodleAssignAssignmentsResponse> {
+    return this.get<MoodleAssignAssignmentsResponse>(moodleUrl, {
+      wsfunction: 'mod_assign_get_assignments',
+      'courseids[0]': String(courseId),
+      moodlewsrestformat: 'json'
+    }).pipe(
+      map(response => {
+        if (response?.exception) {
+          throw new Error(response.message || `Błąd pobierania zadań dla kursu ${courseId}.`);
+        }
+
+        return response;
+      })
+    );
+  }
+
+  modAssignGetSubmissions(
+    moodleUrl: string,
+    assignmentIds: string[]
+  ): Observable<MoodleAssignSubmissionsResponse> {
+    const params: MoodleRestParams = {
+      wsfunction: 'mod_assign_get_submissions',
+      moodlewsrestformat: 'json'
+    };
+
+    assignmentIds.forEach((assignmentId, index) => {
+      params[`assignmentids[${index}]`] = String(assignmentId);
+    });
+
+    return this.get<MoodleAssignSubmissionsResponse>(moodleUrl, params).pipe(
+      map(response => {
+        if (response?.exception) {
+          throw new Error(response.message || 'Błąd pobierania oddań (mod_assign_get_submissions).');
+        }
+
+        return response;
+      })
+    );
+  }
+
+  modAssignGetParticipant<T>(
+    moodleUrl: string,
+    assignmentId: string,
+    userId: string,
+    embedUser = false
+  ): Observable<T> {
+    return this.get<T>(moodleUrl, {
+      wsfunction: 'mod_assign_get_participant',
+      assignid: String(assignmentId),
+      userid: String(userId),
+      embeduser: embedUser ? '1' : '0',
+      moodlewsrestformat: 'json'
+    });
+  }
+
+  modAssignGetSubmissionStatus<T>(
+    moodleUrl: string,
+    assignmentId: string,
+    userId: string,
+    groupId = '0'
+  ): Observable<T> {
+    return this.get<T>(moodleUrl, {
+      wsfunction: 'mod_assign_get_submission_status',
+      assignid: String(assignmentId),
+      userid: String(userId),
+      groupid: String(groupId),
+      moodlewsrestformat: 'json'
+    });
+  }
+
+  modAssignGetGrades(
+    moodleUrl: string,
+    assignmentIds: string[]
+  ): Observable<MoodleAssignGradesResponse> {
+    const params: MoodleRestParams = {
+      wsfunction: 'mod_assign_get_grades',
+      moodlewsrestformat: 'json'
+    };
+
+    assignmentIds.forEach((assignmentId, index) => {
+      params[`assignmentids[${index}]`] = String(assignmentId);
+    });
+
+    return this.get<MoodleAssignGradesResponse>(moodleUrl, params).pipe(
+      map(response => {
+        if (response?.exception) {
+          throw new Error(response.message || 'Błąd pobierania ocen (mod_assign_get_grades).');
+        }
+
+        return response;
+      })
+    );
+  }
+
+  modAssignSaveGrade<T>(moodleUrl: string, params: MoodleAssignSaveGradeParams): Observable<T> {
+    return this.post<T>(moodleUrl, {
+      wsfunction: 'mod_assign_save_grade',
+      moodlewsrestformat: 'json',
+      ...params
+    });
+  }
+
+  modAssignSaveGradeWithVariants<T extends { exception?: string; message?: string; errorcode?: string; debuginfo?: string }>(
+    moodleUrl: string,
+    input: {
+      assignmentId: string;
+      studentId: string;
+      points: number;
+      comment: string;
+      attemptNumber?: number;
+    }
+  ): Observable<number> {
+    const normalizedComment = String(input.comment || '');
+    const gradeValue = Number.isFinite(input.points) ? String(input.points) : '0';
+    const normalizedAttempt = Number.isFinite(Number(input.attemptNumber)) && Number(input.attemptNumber) >= 0
+      ? String(Math.floor(Number(input.attemptNumber)))
+      : '0';
+
+    const requestVariants: MoodleAssignSaveGradeParams[] = [
+      {
+        assignmentid: String(input.assignmentId),
+        userid: String(input.studentId),
+        grade: gradeValue,
+        attemptnumber: normalizedAttempt,
+        addattempt: '0',
+        applytoall: '0',
+        workflowstate: 'graded',
+        'plugindata[assignfeedbackcomments_editor][text]': normalizedComment,
+        'plugindata[assignfeedbackcomments_editor][format]': '1',
+        'plugindata[files_filemanager]': '0'
+      },
+      {
+        assignmentid: String(input.assignmentId),
+        userid: String(input.studentId),
+        grade: gradeValue,
+        attemptnumber: '-1',
+        addattempt: '0',
+        applytoall: '0',
+        workflowstate: 'graded',
+        'plugindata[assignfeedbackcomments_editor][text]': normalizedComment,
+        'plugindata[assignfeedbackcomments_editor][format]': '1',
+        'plugindata[files_filemanager]': '0'
+      },
+      {
+        assignmentid: String(input.assignmentId),
+        userid: String(input.studentId),
+        grade: gradeValue,
+        attemptnumber: normalizedAttempt,
+        addattempt: '0',
+        applytoall: '0',
+        workflowstate: 'released',
+        'plugindata[assignfeedbackcomments_editor][text]': normalizedComment,
+        'plugindata[assignfeedbackcomments_editor][format]': '1',
+        'plugindata[files_filemanager]': '0'
+      },
+      {
+        assignmentid: String(input.assignmentId),
+        userid: String(input.studentId),
+        grade: gradeValue,
+        attemptnumber: normalizedAttempt,
+        addattempt: '0',
+        applytoall: '0',
+        workflowstate: 'graded'
+      },
+      {
+        assignmentid: String(input.assignmentId),
+        userid: String(input.studentId),
+        grade: gradeValue,
+        attemptnumber: '-1',
+        addattempt: '0',
+        applytoall: '0',
+        workflowstate: 'released'
+      },
+      {
+        assignmentid: String(input.assignmentId),
+        userid: String(input.studentId),
+        grade: gradeValue,
+        attemptnumber: normalizedAttempt,
+        addattempt: '0',
+        applytoall: '0',
+        workflowstate: ''
+      }
+    ];
+
+    const trySaveVariant = (index: number): Observable<number> => {
+      if (index >= requestVariants.length) {
+        return throwError(() => new Error(`Błąd zapisu rozwiązania assignmentId=${input.assignmentId}: wszystkie warianty parametrów zostały odrzucone.`));
+      }
+
+      return this.modAssignSaveGrade<T>(moodleUrl, requestVariants[index]).pipe(
+        map(response => {
+          if (response?.exception) {
+            const details = [
+              response.errorcode ? `errorcode=${response.errorcode}` : '',
+              response.debuginfo ? `debuginfo=${response.debuginfo}` : ''
+            ].filter(Boolean).join(', ');
+            throw new Error(
+              response.message || details || `Wariant #${index + 1}: błąd zapisu rozwiązania.`
+            );
+          }
+
+          return index + 1;
+        }),
+        catchError(error => {
+          console.warn(`[Moodle API] Odrzucony wariant zapisu rozwiązania #${index + 1}:`, requestVariants[index], error);
+          return trySaveVariant(index + 1);
+        })
+      );
+    };
+
+    return trySaveVariant(0);
+  }
+
   getAttendanceInstanceIdForCourse(moodleUrl: string, courseId: string): Observable<string | undefined> {
     const normalizedCourseId = String(courseId).trim();
 
@@ -119,6 +343,8 @@ export class MoodleService {
       normalizedCourseId
     ).pipe(
       map(response => {
+        console.info(`[Moodle API][DEBUG] core_course_get_contents courseId=${normalizedCourseId}`, response);
+
         if (!Array.isArray(response) && response?.exception) {
           throw new Error(response.message || `Błąd pobierania zawartości kursu ${normalizedCourseId}.`);
         }

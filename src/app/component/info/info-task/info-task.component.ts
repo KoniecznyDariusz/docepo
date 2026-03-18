@@ -27,4 +27,29 @@ export class InfoTaskComponent {
   onBackdropClick(): void {
     this.close.emit();
   }
+
+  getTaskDisplayTitle(task: Task | undefined): string {
+    if (!task) {
+      return '-';
+    }
+
+    const normalizedName = String(task.name || '').trim();
+    const normalizedDescription = String(task.description || '').trim();
+
+    if (!normalizedDescription) {
+      return normalizedName || '-';
+    }
+
+    const lowerName = normalizedName.toLowerCase();
+    const lowerDescription = normalizedDescription.toLowerCase();
+    if (lowerName === lowerDescription) {
+      return normalizedDescription;
+    }
+
+    if (lowerDescription.startsWith(`${lowerName} `)) {
+      return normalizedDescription;
+    }
+
+    return `${normalizedName} - ${normalizedDescription}`;
+  }
 }

@@ -58,11 +58,38 @@ export interface MoodleEnrolledUserResponse {
 }
 
 export interface MoodleCourseContentModule {
+  id?: number | string;
   modname?: string;
   instance?: number | string;
+  visible?: number | boolean;
+  uservisible?: number | boolean;
+  name?: string;
+  availability?: unknown;
+  availabilityinfo?: string;
+  availableinfo?: string;
+  availablefrom?: number | string;
+  timeopen?: number | string;
+  allowsubmissionsfromdate?: number | string;
+  dates?: Array<{
+    label?: string;
+    timestamp?: number | string;
+    dataid?: string;
+  }>;
 }
 
 export interface MoodleCourseContentSection {
+  name?: string;
+  visible?: number | boolean;
+  uservisible?: number | boolean;
+  availability?: unknown;
+  availabilityinfo?: string;
+  availableinfo?: string;
+  availablefrom?: number | string;
+  dates?: Array<{
+    label?: string;
+    timestamp?: number | string;
+    dataid?: string;
+  }>;
   modules?: MoodleCourseContentModule[];
 }
 

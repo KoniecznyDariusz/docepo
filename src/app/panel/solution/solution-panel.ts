@@ -48,6 +48,31 @@ export class SolutionPanel implements OnInit {
   private moodle = inject(AppicationDataService);
   private backNav = inject(BackNavigationService);
 
+  getTaskDisplayTitle(task: Task | undefined): string {
+    if (!task) {
+      return '';
+    }
+
+    const normalizedName = String(task.name || '').trim();
+    const normalizedDescription = String(task.description || '').trim();
+
+    if (!normalizedDescription) {
+      return normalizedName;
+    }
+
+    const lowerName = normalizedName.toLowerCase();
+    const lowerDescription = normalizedDescription.toLowerCase();
+    if (lowerName === lowerDescription) {
+      return normalizedDescription;
+    }
+
+    if (lowerDescription.startsWith(`${lowerName} `)) {
+      return normalizedDescription;
+    }
+
+    return `${normalizedName} - ${normalizedDescription}`;
+  }
+
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const studentId = params['studentId'];
@@ -320,7 +345,7 @@ export class SolutionPanel implements OnInit {
     const currentTask = this.task();
     if (currentSolution && currentTask) {
       this.solution.set({ ...currentSolution, points: this.editedPoints() });
-      // TODO: Wywołanie serwisu do zapisania punktów na serwerze
+      this.updateSolution();
       this.closePointsEditor();
     }
   }
@@ -341,7 +366,7 @@ export class SolutionPanel implements OnInit {
     const currentSolution = this.solution();
     if (currentSolution) {
       this.solution.set({ ...currentSolution, status: (this.editedStatus() || '') as any });
-      // TODO: Wywołanie serwisu do zapisania statusu na serwerze
+      this.updateSolution();
       this.closeStatusEditor();
     }
   }
@@ -351,7 +376,7 @@ export class SolutionPanel implements OnInit {
     const currentSolution = this.solution();
     if (currentSolution) {
       this.solution.set({ ...currentSolution, status: status as any });
-      // TODO: Wywołanie serwisu do zapisania statusu na serwerze
+      this.updateSolution();
       this.closeStatusEditor();
     }
   }
@@ -369,13 +394,33 @@ export class SolutionPanel implements OnInit {
     if (currentSolution) {
       this.solution.set({ ...currentSolution, comment: '' });
       this.commentText.set('');
-      // TODO: Wywołanie serwisu do zapisania pustego komentarza na serwerze
+      this.updateSolution();
     }
     this.closeDeleteModal();
   }
 
   updateSolution(): void {
-    if (!this.solution()) return;
-    // TODO: Implementacja aktualizacji rozwiązania
+    const currentSolution = this.solution();
+    if (!currentSolution) {
+      return;
+    }
+
+    this.moodle.updateSolution(
+      currentSolution.studentId,
+      currentSolution.taskId,
+      {
+        points: currentSolution.points,
+        status: currentSolution.status,
+        comment: currentSolution.comment
+      }
+    ).subscribe({
+      next: () => {
+        console.info(`[Moodle API] Zapis panelu rozwiązania OK: studentId=${currentSolution.studentId}, taskId=${currentSolution.taskId}`);
+      },
+      error: error => {
+        console.error('[Moodle API] Błąd zapisu rozwiązania z panelu:', error);
+        alert('Nie udało się zapisać zmian rozwiązania w Moodle.');
+      }
+    });
   }
 }

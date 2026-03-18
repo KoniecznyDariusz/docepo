@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, from, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { Student } from 'app/model/student.model';
@@ -11,8 +10,13 @@ import { ClassDate } from 'app/model/classDate.model';
 import { Task } from 'app/model/task.model';
 import { Solution, SolutionStatus } from 'app/model/solution.model';
 import {
+  MoodleAssignAssignmentsResponse,
+  MoodleAssignAssignment,
+  MoodleAssignGradesResponse,
+  MoodleAssignSubmissionsResponse,
   MoodleAttendanceSessionDetailsResponse,
   MoodleAttendanceSessionResponse,
+  MoodleCourseContentSection,
   MoodleCourseGroupsResponse,
   MoodleCourseResponse,
   MoodleCurrentUser,
@@ -31,10 +35,10 @@ export type { MoodleCurrentUser } from 'app/model/moodle/moodle-api.model';
   providedIn: 'root'
 })
 export class ApplicationDataService {
-  private http = inject(HttpClient);
   private storageService = inject(StorageService);
   private moodleApi = inject(MoodleService);
   private activeAttendanceGroupId: string | null = null;
+  private readonly taskPrefixPattern = /^L\d{1,2}\b/i;
 
   setActiveAttendanceGroupId(groupId: string | null | undefined): void {
     const normalizedGroupId = String(groupId || '').trim();
@@ -48,6 +52,19 @@ export class ApplicationDataService {
   private isAccessControlErrorMessage(message: string): boolean {
     const normalized = (message || '').toLowerCase();
     return normalized.includes('kontroli dostępu') || normalized.includes('accessexception');
+  }
+
+  private isAccessExceptionResponse(value: unknown): boolean {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    const message = String(record['message'] || '');
+    const errorCode = String(record['errorcode'] || '');
+    const exception = String(record['exception'] || '');
+    return this.isAccessControlErrorMessage(message)
+      || errorCode.toLowerCase().includes('accessexception')
+      || exception.toLowerCase().includes('access_exception');
   }
 
   private toGroups(rawGroups: Array<MoodleGroupResponse | MoodleEnrolledUserGroupResponse>, courseId: string): Group[] {
@@ -300,6 +317,820 @@ export class ApplicationDataService {
     };
   }
 
+  private isVisibleModule(module: { visible?: number | boolean; uservisible?: number | boolean }): boolean {
+    const toBoolean = (value: number | boolean | undefined): boolean | undefined => {
+      if (value === undefined || value === null) {
+        return undefined;
+      }
+      if (typeof value === 'boolean') {
+        return value;
+      }
+      return Number(value) !== 0;
+    };
+
+    const userVisible = toBoolean(module.uservisible);
+    const visible = toBoolean(module.visible);
+
+    if (userVisible !== undefined) {
+      return userVisible;
+    }
+    if (visible !== undefined) {
+      return visible;
+    }
+    return true;
+  }
+
+  private parseTaskName(fullName: string): { shortName: string; description: string } | null {
+    const normalized = String(fullName || '').trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const match = normalized.match(this.taskPrefixPattern);
+    if (!match) {
+      return null;
+    }
+
+    const shortName = match[0].toUpperCase();
+    const rest = normalized.slice(match[0].length).trim();
+    const description = rest.replace(/^[-–—:\s]+/, '').trim();
+
+    return {
+      shortName,
+      description
+    };
+  }
+
+  private toSolutionStatus(stateToken: string | undefined): SolutionStatus {
+    const normalized = String(stateToken || '').trim().toUpperCase();
+    if (!normalized) {
+      return '';
+    }
+
+    const firstChar = normalized.charAt(0);
+    if (['C', 'G', 'W', 'U', 'P', 'N'].includes(firstChar)) {
+      return firstChar as SolutionStatus;
+    }
+
+    return '';
+  }
+
+  private composeMoodleStateLine(status: SolutionStatus | undefined): string {
+    const normalizedStatus = String(status || '').trim().toUpperCase();
+    const token = normalizedStatus || '-';
+    return `State: ${token}`;
+  }
+
+  private escapeForMoodleHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private normalizeMoodleCommentToPlainText(rawComment: string | undefined): string {
+    let normalized = String(rawComment || '').replace(/\r\n/g, '\n');
+
+    normalized = normalized
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
+      .replace(/<\/div>\s*<div[^>]*>/gi, '\n')
+      .replace(/<\/li>\s*<li[^>]*>/gi, '\n')
+      .replace(/<\/h[1-6]>\s*<h[1-6][^>]*>/gi, '\n');
+
+    normalized = normalized
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&amp;/gi, '&')
+      .replace(/\n{3,}/g, '\n\n');
+
+    return normalized.trim();
+  }
+
+  private composeMoodleComment(status: SolutionStatus | undefined, comment: string | undefined): string {
+    const stateLine = this.composeMoodleStateLine(status);
+    const normalizedComment = String(comment || '').replace(/\r\n/g, '\n').trim();
+    const escapedStateLine = this.escapeForMoodleHtml(stateLine);
+    if (!normalizedComment) {
+      return escapedStateLine;
+    }
+
+    const escapedComment = this.escapeForMoodleHtml(normalizedComment).replace(/\n/g, '<br>');
+    return `${escapedStateLine}<br>${escapedComment}`;
+  }
+
+  private parseCommentAndState(comment: string | undefined): { status: SolutionStatus; comment: string } {
+    const normalizedComment = this.normalizeMoodleCommentToPlainText(comment);
+    if (!normalizedComment.trim()) {
+      return { status: '', comment: '' };
+    }
+
+    const lines = normalizedComment.split('\n');
+    const firstLine = lines[0]?.trim() || '';
+    const stateMatch = firstLine.match(/^State:\s*(\S+)\s*$/i);
+
+    if (!stateMatch) {
+      return {
+        status: '',
+        comment: normalizedComment.trim()
+      };
+    }
+
+    const status = this.toSolutionStatus(stateMatch[1]);
+    const contentWithoutState = lines.slice(1).join('\n').trim();
+
+    return {
+      status,
+      comment: contentWithoutState
+    };
+  }
+
+  private extractSubmissionComment(submission: unknown): string {
+    const seen = new Set<unknown>();
+
+    const collectTexts = (node: unknown): string[] => {
+      if (!node || typeof node !== 'object' || seen.has(node)) {
+        return [];
+      }
+      seen.add(node);
+
+      const record = node as Record<string, unknown>;
+      const collected: string[] = [];
+
+      // Some Moodle responses return feedback text directly in string fields instead of editorfields.
+      Object.entries(record).forEach(([key, value]) => {
+        if (typeof value !== 'string') {
+          return;
+        }
+
+        const text = String(value || '').trim();
+        if (!text) {
+          return;
+        }
+
+        const normalizedKey = key.toLowerCase();
+        const isLikelyCommentField =
+          normalizedKey.includes('comment')
+          || normalizedKey.includes('feedback')
+          || normalizedKey.endsWith('text')
+          || normalizedKey.includes('editor');
+        const hasStateMarker = /state\s*:/i.test(text);
+
+        if (isLikelyCommentField || hasStateMarker) {
+          collected.push(text);
+        }
+      });
+
+      const editorFields = record['editorfields'];
+      if (Array.isArray(editorFields)) {
+        editorFields.forEach(field => {
+          if (!field || typeof field !== 'object') {
+            return;
+          }
+          const text = String((field as Record<string, unknown>)['text'] || '').trim();
+          if (text) {
+            collected.push(text);
+          }
+        });
+      }
+
+      Object.values(record).forEach(value => {
+        if (!value || typeof value !== 'object') {
+          return;
+        }
+
+        if (Array.isArray(value)) {
+          value.forEach(item => collected.push(...collectTexts(item)));
+          return;
+        }
+
+        collected.push(...collectTexts(value));
+      });
+
+      return collected;
+    };
+
+    const submissionRecord = (submission && typeof submission === 'object')
+      ? submission as Record<string, unknown>
+      : {};
+
+    const pluginBuckets: unknown[] = [
+      submissionRecord['feedbackplugins'],
+      submissionRecord['plugins'],
+      submissionRecord['feedback'],
+      submissionRecord['submission']
+    ];
+
+    for (const bucket of pluginBuckets) {
+      if (!Array.isArray(bucket)) {
+        continue;
+      }
+
+      for (const plugin of bucket) {
+        if (!plugin || typeof plugin !== 'object') {
+          continue;
+        }
+
+        const pluginRecord = plugin as Record<string, unknown>;
+        const name = String(pluginRecord['name'] || pluginRecord['type'] || '').toLowerCase();
+        if (!name.includes('assignfeedbackcomments')) {
+          continue;
+        }
+
+        const texts = collectTexts(plugin);
+        const preferred = texts.find(text => /state\s*:/i.test(text));
+        if (preferred) {
+          return preferred;
+        }
+        if (texts.length > 0) {
+          return texts[0];
+        }
+      }
+    }
+
+    const allTexts = collectTexts(submission);
+    const withStateLine = allTexts.find(text => /state\s*:/i.test(text));
+    if (withStateLine) {
+      return withStateLine;
+    }
+
+    return allTexts[0] || '';
+  }
+
+  private collectTimestamp(value: unknown, target: number[]): void {
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue) && numericValue > 0) {
+      target.push(numericValue);
+    }
+  }
+
+  private extractAvailabilityStartTimestamp(rawAvailability: unknown): number | undefined {
+    if (!rawAvailability) {
+      return undefined;
+    }
+
+    let availabilityNode: unknown = rawAvailability;
+    if (typeof rawAvailability === 'string') {
+      const trimmed = rawAvailability.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+
+      try {
+        availabilityNode = JSON.parse(trimmed);
+      } catch {
+        return undefined;
+      }
+    }
+
+    const collectedTimestamps: number[] = [];
+    const walk = (node: unknown): void => {
+      if (!node || typeof node !== 'object') {
+        return;
+      }
+
+      const record = node as Record<string, unknown>;
+      const type = String(record['type'] || '').toLowerCase();
+      const direction = String(record['d'] || '');
+      const timestamp = Number(record['t']);
+
+      if (type === 'date' && (direction === '>=' || direction === '>') && Number.isFinite(timestamp) && timestamp > 0) {
+        collectedTimestamps.push(timestamp);
+      }
+
+      const conditions = record['c'];
+      if (Array.isArray(conditions)) {
+        conditions.forEach(condition => walk(condition));
+      }
+    };
+
+    walk(availabilityNode);
+    if (collectedTimestamps.length === 0) {
+      return undefined;
+    }
+
+    return Math.max(...collectedTimestamps);
+  }
+
+  private extractRestrictAccessStartTimestamp(node: Record<string, unknown>): number | undefined {
+    const timestamps: number[] = [];
+
+    this.collectTimestamp(node['availablefrom'], timestamps);
+    this.collectTimestamp(node['timeopen'], timestamps);
+    this.collectTimestamp(node['allowsubmissionsfromdate'], timestamps);
+
+    const dates = node['dates'];
+    if (Array.isArray(dates)) {
+      dates.forEach(item => {
+        if (!item || typeof item !== 'object') {
+          return;
+        }
+
+        const record = item as Record<string, unknown>;
+        const dataId = String(record['dataid'] || '').toLowerCase();
+        const label = String(record['label'] || '').toLowerCase();
+        const timestamp = Number(record['timestamp']);
+
+        const looksLikeStartRestriction =
+          dataId.includes('availablefrom')
+          || dataId.includes('allowsubmissionsfromdate')
+          || dataId.includes('timeopen')
+          || ((label.includes('od') || label.includes('from')) && !label.includes('do') && !label.includes('until'));
+
+        if (looksLikeStartRestriction && Number.isFinite(timestamp) && timestamp > 0) {
+          timestamps.push(timestamp);
+        }
+      });
+    }
+
+    const availabilityTimestamp = this.extractAvailabilityStartTimestamp(node['availability']);
+    if (availabilityTimestamp) {
+      timestamps.push(availabilityTimestamp);
+    }
+
+    if (timestamps.length === 0) {
+      return undefined;
+    }
+
+    return Math.max(...timestamps);
+  }
+
+  private isAvailabilityOpenNow(rawNode: Record<string, unknown>, nowTimestampSeconds: number): boolean {
+    const availableFromTimestamp = this.extractRestrictAccessStartTimestamp(rawNode);
+    if (!availableFromTimestamp) {
+      return true;
+    }
+
+    return availableFromTimestamp <= nowTimestampSeconds;
+  }
+
+  private loadVisibleAssignModules(
+    moodleUrl: string,
+    courseId: string,
+    nowTimestampSeconds: number
+  ): Observable<Array<{
+    cmid: string;
+    instanceId: string;
+    moduleName: string;
+    sectionName: string;
+    sectionVisible: boolean;
+    sectionAvailableNow: boolean;
+    moduleVisible: boolean;
+    moduleAvailableNow: boolean;
+  }>> {
+    return this.moodleApi.coreCourseGetContents<MoodleCourseContentSection[] | MoodleSiteInfoResponse>(moodleUrl, courseId).pipe(
+      switchMap(response => {
+        if (!Array.isArray(response) && response?.exception) {
+          throw new Error(response.message || `Błąd pobierania zawartości kursu ${courseId} dla listy zadań.`);
+        }
+
+        const sections = Array.isArray(response) ? response : [];
+        const assignModules = sections
+          .flatMap(section => {
+            const sectionVisible = this.isVisibleModule(section);
+            const sectionAvailableNow = this.isAvailabilityOpenNow(section as unknown as Record<string, unknown>, nowTimestampSeconds);
+            const sectionName = String(section.name || '').trim();
+
+            return (section.modules || [])
+              .filter(module => (module.modname || '').toLowerCase() === 'assign')
+              .map(module => {
+                const moduleVisible = this.isVisibleModule(module);
+                const moduleAvailableNow = this.isAvailabilityOpenNow(module as unknown as Record<string, unknown>, nowTimestampSeconds);
+
+                return {
+                  cmid: String(module.id || '').trim(),
+                  instanceId: String(module.instance || '').trim(),
+                  moduleName: String(module.name || '').trim(),
+                  sectionName,
+                  sectionVisible,
+                  sectionAvailableNow,
+                  moduleVisible,
+                  moduleAvailableNow
+                };
+              });
+          })
+          .filter(module => !!module.instanceId);
+
+        const moduleDebugRequests = assignModules
+          .filter(module => !!module.cmid)
+          .map(module =>
+            this.moodleApi.coreCourseGetCourseModule<unknown>(moodleUrl, module.cmid).pipe(
+              map(details => ({
+                cmid: module.cmid,
+                instanceId: module.instanceId,
+                moduleName: module.moduleName,
+                sectionName: module.sectionName,
+                details
+              })),
+              catchError(error => of({
+                cmid: module.cmid,
+                instanceId: module.instanceId,
+                moduleName: module.moduleName,
+                sectionName: module.sectionName,
+                error: String(error?.message || error)
+              }))
+            )
+          );
+
+        const emitDebugLogs = moduleDebugRequests.length > 0
+          ? forkJoin(moduleDebugRequests).pipe(
+            map(results => {
+              console.info(`[Moodle API][DEBUG] core_course_get_course_module courseId=${courseId}`, results);
+              return void 0;
+            })
+          )
+          : of(void 0);
+
+        return emitDebugLogs.pipe(
+          map(() =>
+            assignModules.filter(module => module.sectionVisible && module.sectionAvailableNow && module.moduleVisible && module.moduleAvailableNow)
+          )
+        );
+      })
+    );
+  }
+
+  private loadTasksFromMoodle(courseId: string): Observable<Task[]> {
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        const nowTimestampSeconds = Math.floor(Date.now() / 1000);
+
+        return forkJoin({
+          visibleModules: this.loadVisibleAssignModules(normalizedMoodleUrl, courseId, nowTimestampSeconds),
+          assignmentsResponse: this.moodleApi.modAssignGetAssignments(normalizedMoodleUrl, courseId)
+        }).pipe(
+          map(result => ({
+            ...result,
+            nowTimestampSeconds
+          }))
+        );
+      }),
+      map(({ visibleModules, assignmentsResponse, nowTimestampSeconds }) => {
+        const visibleByInstanceId = new Map(visibleModules.map(module => [module.instanceId, module] as const));
+        const assignments = (assignmentsResponse.courses || [])
+          .flatMap(course => course.assignments || []);
+
+        const assignmentDebugRows: Array<{
+          id: string;
+          name: string;
+          visibleModule: boolean;
+          sectionName: string;
+          sectionVisible: boolean;
+          sectionAvailableNow: boolean;
+          moduleVisible: boolean;
+          moduleAvailableNow: boolean;
+          lPrefixMatch: boolean;
+          availableFrom: string;
+          availableNow: boolean;
+          included: boolean;
+        }> = [];
+
+        const tasksFromApi = assignments
+          .map((assignment: MoodleAssignAssignment) => {
+            const assignmentId = String(assignment.id || '').trim();
+            const assignmentName = String(assignment.name || '').trim();
+            const visibleModuleInfo = assignmentId ? visibleByInstanceId.get(assignmentId) : undefined;
+            const visibleModule = !!visibleModuleInfo;
+            const availableFromTimestamp = Number(assignment.allowsubmissionsfromdate);
+            const hasAvailabilityRestriction = Number.isFinite(availableFromTimestamp) && availableFromTimestamp > 0;
+            const isAvailableNow = !hasAvailabilityRestriction || availableFromTimestamp <= nowTimestampSeconds;
+            const parsed = this.parseTaskName(assignmentName || visibleByInstanceId.get(assignmentId)?.moduleName || '');
+            const lPrefixMatch = !!parsed;
+            const included = visibleModule && lPrefixMatch && isAvailableNow;
+
+            assignmentDebugRows.push({
+              id: assignmentId || '-',
+              name: assignmentName || '-',
+              visibleModule,
+              sectionName: visibleModuleInfo?.sectionName || '-',
+              sectionVisible: visibleModuleInfo?.sectionVisible ?? false,
+              sectionAvailableNow: visibleModuleInfo?.sectionAvailableNow ?? false,
+              moduleVisible: visibleModuleInfo?.moduleVisible ?? false,
+              moduleAvailableNow: visibleModuleInfo?.moduleAvailableNow ?? false,
+              lPrefixMatch,
+              availableFrom: hasAvailabilityRestriction ? new Date(availableFromTimestamp * 1000).toISOString() : '-',
+              availableNow: isAvailableNow,
+              included
+            });
+
+            if (!assignmentId || !visibleModule) {
+              return null;
+            }
+
+            if (!isAvailableNow) {
+              return null;
+            }
+
+            if (!parsed) {
+              return null;
+            }
+
+            const dueTimestamp = Number(assignment.duedate);
+            const dueDate = Number.isFinite(dueTimestamp) && dueTimestamp > 0
+              ? new Date(dueTimestamp * 1000)
+              : new Date();
+
+            const maxPoints = Number(assignment.grade);
+
+            return {
+              id: assignmentId,
+              courseId,
+              name: parsed.shortName,
+              description: parsed.description || String(assignment.name || '').trim(),
+              maxPoints: Number.isFinite(maxPoints) && maxPoints > 0 ? maxPoints : 100,
+              dueDate
+            } as Task;
+          })
+          .filter((task): task is Task => !!task)
+          .sort((left, right) => left.dueDate.getTime() - right.dueDate.getTime());
+
+        if (assignmentDebugRows.length > 0) {
+          console.info(
+            `[Moodle API][Assignments Debug] courseId=${courseId}, fetched=${assignmentDebugRows.length}, included=${tasksFromApi.length}`,
+            assignmentDebugRows
+          );
+        }
+
+        if (tasksFromApi.length > 0) {
+          const byKey = new Map<string, Task>();
+          this.tasks.forEach(task => byKey.set(`${task.courseId}:${task.id}`, task));
+          tasksFromApi.forEach(task => byKey.set(`${task.courseId}:${task.id}`, task));
+          this.tasks = Array.from(byKey.values());
+        }
+
+        return tasksFromApi;
+      })
+    );
+  }
+
+  private loadSolutionsFromMoodle(studentId: string, courseId: string): Observable<Solution[]> {
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.getTasks(courseId).pipe(
+          map(tasks => tasks.filter(task => task.courseId === courseId)),
+          switchMap(courseTasks => {
+            if (courseTasks.length === 0) {
+              return of([] as Solution[]);
+            }
+
+            const assignmentIds = courseTasks.map(task => String(task.id));
+            const normalizedStudentId = String(studentId).trim();
+
+            const gradesResponse$ = this.gradesAccessDeniedByCourseId.has(courseId)
+              ? of({ assignments: [] } as MoodleAssignGradesResponse)
+              : this.moodleApi.modAssignGetGrades(normalizedMoodleUrl, assignmentIds).pipe(
+                catchError(error => {
+                  const message = String(error?.message || '');
+                  if (this.isAccessControlErrorMessage(message)) {
+                    this.gradesAccessDeniedByCourseId.add(courseId);
+                  }
+
+                  console.warn(
+                    `[Moodle API] Brak dostępu do ocen (mod_assign_get_grades), studentId=${normalizedStudentId}, courseId=${courseId}. Kontynuuję bez punktów z API. ${message}`
+                  );
+                  return of({ assignments: [] } as MoodleAssignGradesResponse);
+                })
+              );
+
+            const participantsResponse$ = this.canUseAssignParticipantApi
+              ? forkJoin(
+                assignmentIds.map(assignmentId =>
+                  this.moodleApi.modAssignGetParticipant<unknown>(
+                    normalizedMoodleUrl,
+                    assignmentId,
+                    normalizedStudentId,
+                    false
+                  ).pipe(
+                    map(response => [assignmentId, response] as const),
+                    catchError(error => {
+                      console.warn(
+                        `[Moodle API] Brak danych participant dla assignmentId=${assignmentId}, studentId=${normalizedStudentId}.`,
+                        error
+                      );
+                      return of([assignmentId, null] as const);
+                    })
+                  )
+                )
+              )
+              : of(assignmentIds.map(assignmentId => [assignmentId, null] as const));
+
+            const submissionStatusResponse$ = this.canUseAssignSubmissionStatusApi
+              ? forkJoin(
+                assignmentIds.map(assignmentId =>
+                  this.moodleApi.modAssignGetSubmissionStatus<unknown>(
+                    normalizedMoodleUrl,
+                    assignmentId,
+                    normalizedStudentId,
+                    '0'
+                  ).pipe(
+                    map(response => [assignmentId, response] as const),
+                    catchError(error => {
+                      console.warn(
+                        `[Moodle API] Brak danych submission_status dla assignmentId=${assignmentId}, studentId=${normalizedStudentId}.`,
+                        error
+                      );
+                      return of([assignmentId, null] as const);
+                    })
+                  )
+                )
+              )
+              : of(assignmentIds.map(assignmentId => [assignmentId, null] as const));
+
+            return forkJoin({
+              submissionsResponse: this.moodleApi.modAssignGetSubmissions(normalizedMoodleUrl, assignmentIds),
+              gradesResponse: gradesResponse$,
+              participantsResponse: participantsResponse$,
+              submissionStatusResponse: submissionStatusResponse$
+            }).pipe(
+              map(({ submissionsResponse, gradesResponse, participantsResponse, submissionStatusResponse }) => {
+                console.info(
+                  `[Moodle API][Grades JSON] studentId=${normalizedStudentId}, courseId=${courseId}\n${JSON.stringify(
+                    gradesResponse,
+                    null,
+                    2
+                  )}`
+                );
+
+                const taskById = new Map(courseTasks.map(task => [task.id, task] as const));
+                const gradeByAssignmentId = new Map<string, number>();
+                const gradeCommentByAssignmentId = new Map<string, string>();
+                const participantByAssignmentId = new Map<string, unknown>();
+                const submissionStatusByAssignmentId = new Map<string, unknown>();
+
+                participantsResponse.forEach(([assignmentId, participant]) => {
+                  if (this.isAccessExceptionResponse(participant)) {
+                    this.canUseAssignParticipantApi = false;
+                    console.warn('[Moodle API] Brak uprawnień do mod_assign_get_participant. Wyłączam kolejne próby.');
+                    return;
+                  }
+                  if (participant) {
+                    participantByAssignmentId.set(String(assignmentId), participant);
+                  }
+                });
+
+                submissionStatusResponse.forEach(([assignmentId, statusResponse]) => {
+                  if (this.isAccessExceptionResponse(statusResponse)) {
+                    this.canUseAssignSubmissionStatusApi = false;
+                    console.warn('[Moodle API] Brak uprawnień do mod_assign_get_submission_status. Wyłączam kolejne próby.');
+                    return;
+                  }
+                  if (statusResponse) {
+                    submissionStatusByAssignmentId.set(String(assignmentId), statusResponse);
+                  }
+                });
+
+                (gradesResponse.assignments || []).forEach(assignmentGrade => {
+                  const assignmentId = String(assignmentGrade.assignmentid || '').trim();
+                  if (!assignmentId) {
+                    return;
+                  }
+
+                  const gradeRecord = (assignmentGrade.grades || [])
+                    .find(item => String(item.userid || '').trim() === normalizedStudentId);
+                  const parsedGrade = Number(gradeRecord?.grade);
+                  if (Number.isFinite(parsedGrade)) {
+                    gradeByAssignmentId.set(assignmentId, parsedGrade);
+                  }
+
+                  const gradeComment = this.extractSubmissionComment(gradeRecord);
+                  if (gradeComment) {
+                    gradeCommentByAssignmentId.set(assignmentId, gradeComment);
+                  }
+                });
+
+                const solutionsFromApi = (submissionsResponse.assignments || [])
+                  .map(assignment => {
+                    const assignmentId = String(assignment.assignmentid || '').trim();
+                    const task = taskById.get(assignmentId);
+                    if (!assignmentId || !task) {
+                      return null;
+                    }
+
+                    const submissions = assignment.submissions || [];
+                    const submission = submissions.find(item => String(item.userid || '').trim() === normalizedStudentId);
+                    if (!submission) {
+                      console.warn(
+                        `[Moodle API] Brak danych oddania (submission) dla studentId=${normalizedStudentId}, assignmentId=${assignmentId}.`
+                      );
+                      this.solutionAttemptNumberByKey.set(`${studentId}:${assignmentId}`, 0);
+                      return {
+                        id: `${studentId}:${assignmentId}`,
+                        studentId: String(studentId),
+                        taskId: assignmentId,
+                        completedAt: new Date(),
+                        points: 0,
+                        comment: '',
+                        status: '' as SolutionStatus
+                      } as Solution;
+                    }
+
+                    const rawSubmissionComment = this.extractSubmissionComment(submission);
+                    const rawGradeComment = gradeCommentByAssignmentId.get(assignmentId) || '';
+                    const submissionStatusPayload = submissionStatusByAssignmentId.get(assignmentId);
+                    const participantPayload = participantByAssignmentId.get(assignmentId);
+                    const rawSubmissionStatusComment = this.extractSubmissionComment(submissionStatusPayload);
+                    const rawParticipantComment = this.extractSubmissionComment(participantPayload);
+                    const commentCandidates: Array<{ source: string; value: string }> = [
+                      { source: 'submission_status', value: rawSubmissionStatusComment },
+                      { source: 'submission', value: rawSubmissionComment },
+                      { source: 'grades_feedbackplugins', value: rawGradeComment },
+                      { source: 'participant', value: rawParticipantComment }
+                    ];
+                    const selectedComment = commentCandidates.find(candidate => String(candidate.value || '').trim().length > 0);
+                    const selectedCommentSource = selectedComment?.source || '';
+                    const rawComment = selectedComment?.value || '';
+                    const parsed = this.parseCommentAndState(rawComment);
+                    console.info(
+                      `[Moodle API][Comment Read JSON] studentId=${normalizedStudentId}, assignmentId=${assignmentId}\n${JSON.stringify(
+                        {
+                          submissionPayload: submission,
+                          submissionStatusPayload,
+                          participantPayload,
+                          rawGradeComment,
+                          rawSubmissionComment,
+                          rawSubmissionStatusComment,
+                          rawParticipantComment,
+                          selectedCommentSource,
+                          rawComment,
+                          parsedStatus: parsed.status,
+                          parsedComment: parsed.comment
+                        },
+                        null,
+                        2
+                      )}`
+                    );
+                    const hasApiComment = String(rawComment || '').trim().length > 0;
+                    if (!hasApiComment) {
+                      console.warn(
+                        `[Moodle API] Brak komentarza/State dla studentId=${normalizedStudentId}, assignmentId=${assignmentId}.`
+                      );
+                    }
+                    const modified = Number(submission.timemodified || submission.timecreated);
+                    const completedAt = Number.isFinite(modified) && modified > 0 ? new Date(modified * 1000) : new Date();
+                    const gradeFromApi = gradeByAssignmentId.get(assignmentId);
+                    if (!Number.isFinite(gradeFromApi)) {
+                      console.warn(
+                        `[Moodle API] Brak punktów (grade) dla studentId=${normalizedStudentId}, assignmentId=${assignmentId}.`
+                      );
+                    }
+                    const attemptNumberRaw = Number(submission.attemptnumber);
+                    const attemptNumber = Number.isFinite(attemptNumberRaw) && attemptNumberRaw >= 0
+                      ? Math.floor(attemptNumberRaw)
+                      : 0;
+                    this.solutionAttemptNumberByKey.set(`${studentId}:${assignmentId}`, attemptNumber);
+
+                    return {
+                      id: `${studentId}:${assignmentId}`,
+                      studentId: String(studentId),
+                      taskId: assignmentId,
+                      completedAt,
+                      points: Number.isFinite(gradeFromApi) ? Number(gradeFromApi) : 0,
+                      comment: hasApiComment ? parsed.comment : '',
+                      status: hasApiComment ? parsed.status : '' as SolutionStatus
+                    } as Solution;
+                  })
+                  .filter((solution): solution is Solution => !!solution)
+                  .sort((left, right) => {
+                    const taskLeft = taskById.get(left.taskId);
+                    const taskRight = taskById.get(right.taskId);
+                    if (!taskLeft || !taskRight) {
+                      return 0;
+                    }
+                    return taskLeft.dueDate.getTime() - taskRight.dueDate.getTime();
+                  });
+
+                if (solutionsFromApi.length > 0) {
+                  const byKey = new Map<string, Solution>();
+                  this.solutions.forEach(solution => byKey.set(`${solution.studentId}:${solution.taskId}`, solution));
+                  solutionsFromApi.forEach(solution => byKey.set(`${solution.studentId}:${solution.taskId}`, solution));
+                  this.solutions = Array.from(byKey.values());
+                }
+
+                return solutionsFromApi;
+              })
+            );
+          })
+        );
+      })
+    );
+  }
+
   private students: Student[] = [];
   private studentsByGroupId = new Map<string, Student[]>();
   private attendanceStatusIdBySession = new Map<string, Map<Exclude<AttendanceStatus, null>, string>>();
@@ -307,6 +1138,10 @@ export class ApplicationDataService {
   private attendanceInstanceIdBySession = new Map<string, string>();
   private attendanceSessionDisplayBySession = new Map<string, { date: string; description: string }>();
   private attendanceCacheByClassDateId = new Map<string, Attendance[]>();
+  private solutionAttemptNumberByKey = new Map<string, number>();
+  private gradesAccessDeniedByCourseId = new Set<string>();
+  private canUseAssignParticipantApi = true;
+  private canUseAssignSubmissionStatusApi = true;
   private readonly currentClassLeadMinutes = 5;
   private readonly currentClassGraceMinutes = 15;
 
@@ -1014,14 +1849,35 @@ export class ApplicationDataService {
 
   // Pobiera wszystkie zadania dla danego kursu
   getTasks(courseId: string): Observable<Task[]> {
-    const tasks = this.tasks.filter(t => t.courseId === courseId);
-    return of(tasks);
+    return this.loadTasksFromMoodle(courseId).pipe(
+      map(tasksFromApi => {
+        if (tasksFromApi.length === 0) {
+          console.warn(`[Moodle API] Brak danych zadań z Moodle dla courseId=${courseId}.`);
+        }
+        return tasksFromApi;
+      }),
+      catchError(error => {
+        console.warn(`[Moodle API] Brak danych zadań dla courseId=${courseId} (błąd/uprawnienia):`, error);
+        return of([] as Task[]);
+      })
+    );
   }
 
   // Pobiera zadanie po ID
   getTask(taskId: string): Observable<Task | undefined> {
-    const task = this.tasks.find(t => t.id === taskId);
-    return of(task);
+    const fromCache = this.tasks.find(task => task.id === taskId);
+    if (fromCache) {
+      return of(fromCache);
+    }
+
+    const uniqueCourseIds = Array.from(new Set(this.courses.map(course => course.id).filter(Boolean)));
+    if (uniqueCourseIds.length === 0) {
+      return of(undefined);
+    }
+
+    return forkJoin(uniqueCourseIds.map(courseId => this.getTasks(courseId))).pipe(
+      map(taskLists => taskLists.flat().find(task => task.id === taskId))
+    );
   }
 
   // Pobiera wszystkie rozwiązania dla danego studenta
@@ -1032,34 +1888,84 @@ export class ApplicationDataService {
 
   // Pobiera rozwiązania studenta dla danego kursu, posortowane po dacie zadania
   getSolutionsForStudentInCourse(studentId: string, courseId: string): Observable<Solution[]> {
-    const courseTasks = this.tasks.filter(t => t.courseId === courseId);
-    const taskIds = new Set(courseTasks.map(t => t.id));
-    
-    const solutions = this.solutions
-      .filter(s => s.studentId === studentId && taskIds.has(s.taskId))
-      .sort((a, b) => {
-        const taskA = this.tasks.find(t => t.id === a.taskId);
-        const taskB = this.tasks.find(t => t.id === b.taskId);
-        if (!taskA || !taskB) return 0;
-        return new Date(taskA.dueDate).getTime() - new Date(taskB.dueDate).getTime();
-      });
-    
-    return of(solutions);
+    return this.loadSolutionsFromMoodle(studentId, courseId).pipe(
+      map(solutionsFromApi => {
+        if (solutionsFromApi.length === 0) {
+          console.warn(`[Moodle API] Brak danych rozwiązań z Moodle dla studentId=${studentId}, courseId=${courseId}.`);
+        }
+        return solutionsFromApi;
+      }),
+      catchError(error => {
+        console.warn(`[Moodle API] Brak danych rozwiązań dla studentId=${studentId}, courseId=${courseId} (błąd/uprawnienia):`, error);
+        return of([] as Solution[]);
+      })
+    );
   }
 
   // Pobiera rozwiązanie dla konkretnego studenta i zadania
   getSolution(studentId: string, taskId: string): Observable<Solution | undefined> {
-    const solution = this.solutions.find(s => s.studentId === studentId && s.taskId === taskId);
-    return of(solution);
+    const fromCache = this.solutions.find(solution => solution.studentId === studentId && solution.taskId === taskId);
+    if (fromCache) {
+      return of(fromCache);
+    }
+
+    const task = this.tasks.find(currentTask => currentTask.id === taskId);
+    if (!task?.courseId) {
+      return of(undefined);
+    }
+
+    return this.getSolutionsForStudentInCourse(studentId, task.courseId).pipe(
+      map(solutions => solutions.find(solution => solution.taskId === taskId))
+    );
   }
 
   // Aktualizuje rozwiązanie
   updateSolution(studentId: string, taskId: string, updates: Partial<Solution>): Observable<void> {
-    const solution = this.solutions.find(s => s.studentId === studentId && s.taskId === taskId);
-    if (solution) {
-      Object.assign(solution, updates);
+    const solution = this.solutions.find(item => item.studentId === studentId && item.taskId === taskId);
+    if (!solution) {
+      return throwError(() => new Error(`Brak rozwiązania dla studentId=${studentId}, taskId=${taskId}.`));
     }
-    return of(void 0);
+
+    const nextStatus = (updates.status ?? solution.status ?? '') as SolutionStatus;
+    const rawPoints = Number.isFinite(Number(updates.points)) ? Number(updates.points) : solution.points;
+    const task = this.tasks.find(item => item.id === taskId);
+    const maxPoints = Number(task?.maxPoints);
+    const nextPoints = Number.isFinite(maxPoints) && maxPoints > 0
+      ? Math.max(0, Math.min(rawPoints, maxPoints))
+      : Math.max(0, rawPoints);
+    const nextComment = updates.comment ?? solution.comment;
+    const moodleComment = this.composeMoodleComment(nextStatus, nextComment);
+    const solutionKey = `${studentId}:${taskId}`;
+    const attemptNumber = this.solutionAttemptNumberByKey.get(solutionKey) ?? 0;
+
+    return from(this.storageService.getMoodleUrl()).pipe(
+      switchMap(moodleUrl => {
+        const normalizedMoodleUrl = (moodleUrl || '').trim().replace(/\/$/, '');
+        if (!normalizedMoodleUrl) {
+          throw new Error('Brak zapisanego adresu Moodle.');
+        }
+
+        return this.moodleApi.modAssignSaveGradeWithVariants<MoodleSiteInfoResponse>(
+          normalizedMoodleUrl,
+          {
+            assignmentId: String(taskId),
+            studentId: String(studentId),
+            points: nextPoints,
+            comment: moodleComment,
+            attemptNumber
+          }
+        );
+      }),
+      map(variantIndex => {
+        solution.status = nextStatus;
+        solution.points = nextPoints;
+        solution.comment = String(nextComment || '').trim();
+        solution.completedAt = new Date();
+
+        console.info(`[Moodle API] Zapisano rozwiązanie: studentId=${studentId}, taskId=${taskId}, wariant=${variantIndex}`);
+        return void 0;
+      })
+    );
   }
 
   // Wygeneruj wszystkie wpisy solutions dla każdej kombinacji studenta × zadania
