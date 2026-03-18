@@ -67,6 +67,92 @@ export class ApplicationDataService {
       || exception.toLowerCase().includes('access_exception');
   }
 
+  private normalizeRoleLabel(value: unknown): string {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '');
+  }
+
+  private getUserRoles(user: MoodleEnrolledUserResponse): Array<{ label: string; roleId: string }> {
+    const dynamicRoles = (user as unknown as Record<string, unknown>)['roles'];
+    const roles = Array.isArray(dynamicRoles)
+      ? dynamicRoles
+      : (Array.isArray(user.roles) ? user.roles : []);
+
+    return roles
+      .filter(role => !!role && typeof role === 'object')
+      .map(role => {
+        const roleRecord = role as Record<string, unknown>;
+        const label = this.normalizeRoleLabel(
+          roleRecord['shortname'] || roleRecord['name'] || roleRecord['role'] || ''
+        );
+        const roleId = String(roleRecord['roleid'] ?? roleRecord['id'] ?? '').trim();
+
+        return { label, roleId };
+      });
+  }
+
+  private isStudentRoleLabel(roleLabel: string): boolean {
+    const studentLikeLabels = [
+      'student',
+      'learner',
+      'pupil',
+      'uczen',
+      'uczennica',
+      'uczestnik',
+      'uczestniczka',
+      'participant'
+    ];
+
+    return studentLikeLabels.some(label => roleLabel.includes(label));
+  }
+
+  private isNonStudentRoleLabel(roleLabel: string): boolean {
+    const nonStudentLabels = [
+      'teacher',
+      'editingteacher',
+      'noneditingteacher',
+      'instructor',
+      'lecturer',
+      'trainer',
+      'manager',
+      'coursecreator',
+      'admin',
+      'administrator',
+      'owner',
+      'prowadzacy',
+      'nauczyciel',
+      'wykladowca',
+      'wykładowca',
+      'asystent',
+      'tutor'
+    ];
+
+    return nonStudentLabels.some(label => roleLabel.includes(label));
+  }
+
+  private isStudentUserByRoles(user: MoodleEnrolledUserResponse): boolean {
+    const roles = this.getUserRoles(user);
+    if (roles.length === 0) {
+      return true;
+    }
+
+    const hasStudentRole = roles.some(role => this.isStudentRoleLabel(role.label));
+    const hasNonStudentRole = roles.some(role => this.isNonStudentRoleLabel(role.label));
+
+    if (hasNonStudentRole) {
+      return false;
+    }
+
+    if (hasStudentRole) {
+      return true;
+    }
+
+    // Role metadata is present but does not match student profile.
+    return false;
+  }
+
   private toGroups(rawGroups: Array<MoodleGroupResponse | MoodleEnrolledUserGroupResponse>, courseId: string): Group[] {
     const uniqueById = new Map<string, Group>();
 
@@ -1198,8 +1284,13 @@ export class ApplicationDataService {
         );
 
         const source = usersInGroup.length > 0 ? usersInGroup : users;
-        const mappedStudents: Student[] = source
-          .filter(user => String(user.id || '').trim().length > 0)
+        const usersWithId = source.filter(user => String(user.id || '').trim().length > 0);
+        const hasRoleMetadata = usersWithId.some(user => this.getUserRoles(user).length > 0);
+        const filteredUsers = hasRoleMetadata
+          ? usersWithId.filter(user => this.isStudentUserByRoles(user))
+          : usersWithId;
+
+        const mappedStudents: Student[] = filteredUsers
           .map(user => {
             const fullName = (user.fullname || '').trim();
             const firstName = (user.firstname || '').trim();
@@ -1228,7 +1319,10 @@ export class ApplicationDataService {
           );
 
         this.studentsByGroupId.set(groupId, mappedStudents);
-        console.info(`[Moodle API] Pobrano studentów dla groupId=${groupId}, courseId=${courseId}: ${mappedStudents.length}`);
+        const excludedByRole = usersWithId.length - filteredUsers.length;
+        console.info(
+          `[Moodle API] Pobrano studentów dla groupId=${groupId}, courseId=${courseId}: ${mappedStudents.length}${hasRoleMetadata ? ` (odfiltrowano niestudenckie role: ${excludedByRole})` : ''}`
+        );
         return mappedStudents;
       }),
       catchError(error => {

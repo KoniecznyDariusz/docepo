@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { combineLatest } from 'rxjs';
 import { AppicationDataService } from 'app/service/application-data.service';
 import { Student } from 'app/model/student.model';
 import { Group } from 'app/model/group.model';
@@ -32,13 +33,12 @@ export class StudentPanel implements OnInit, OnDestroy {
   private backNav = inject(BackNavigationService);
 
   ngOnInit() {
-    this.route.queryParamMap.subscribe(q => {
-      this.classDateId.set(q.get('classDateId') || undefined);
-    });
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).subscribe(([paramMap, queryParamMap]) => {
+      const studentId = paramMap.get('studentId') || undefined;
+      const groupIdParam = paramMap.get('groupId') || undefined;
+      const classDateIdParam = queryParamMap.get('classDateId') || undefined;
 
-    this.route.params.subscribe(params => {
-      const studentId = params['studentId'];
-      const groupIdParam = params['groupId'];
+      this.classDateId.set(classDateIdParam);
       this.groupId.set(groupIdParam);
       this.eportalService.setActiveAttendanceGroupId(groupIdParam);
 
@@ -49,7 +49,7 @@ export class StudentPanel implements OnInit, OnDestroy {
             this.eportalService.getCourse(g.courseId).subscribe(c => this.course.set(c));
 
             // back -> attendance (classDateId z URL albo pierwszy termin) albo grupy
-            const targetClassDateId = this.classDateId() || g.classDates?.[0]?.id;
+            const targetClassDateId = classDateIdParam || g.classDates?.[0]?.id;
             if (targetClassDateId) {
               this.backNav.setBackUrl(`/attendance/${targetClassDateId}?selected=${studentId}`);
             } else {

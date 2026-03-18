@@ -68,6 +68,39 @@ Attempt number tracking:
 - solutionAttemptNumberByKey[studentId:assignmentId] <- submission.attemptnumber
 - Used later for mod_assign_save_grade variants.
 
+## Attendance Panel Navigation Note (important)
+
+In attendance list rendering, initial student positioning is intentionally applied in two phases:
+1. Initial position right after student list load (selected from URL, otherwise first student).
+2. One additional reposition after attendance statuses are fetched and applied.
+
+Why this exists:
+- Applying statuses updates the student list model and can reset scroll/snap position in some browsers.
+- The second reposition keeps focus on the selected student after that model update.
+
+Implementation reference:
+- src/app/component/attendance/student-list.component.ts
+
+Do not remove this behavior unless replacing it with an equivalent mechanism that preserves return-to-selected behavior.
+
+## Student List Role Filtering
+
+Student list is built from `core_enrol_get_enrolled_users`, then filtered by role metadata when available.
+
+Current behavior:
+1. Keep users assigned to the selected group (`groupId`) when possible.
+2. If role metadata is present (`user.roles`), include only student-like roles.
+3. Exclude teacher/non-student roles (e.g. teacher, editingteacher, manager, admin, owner, and local language equivalents).
+4. If role metadata is missing in response, keep fallback behavior (no role-based exclusion) to avoid dropping all users.
+
+Why this exists:
+- Attendance and grading panels should target learners only.
+- Teachers/owners enrolled in the course should not appear in the student list.
+
+Implementation references:
+- `src/app/service/application-data.service.ts` (`getStudents`, role normalization and filters)
+- `src/app/model/moodle/moodle-core.model.ts` (`MoodleEnrolledUserResponse.roles`)
+
 ## Comment Source Priority
 
 Current priority when selecting raw comment text:

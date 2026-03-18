@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { combineLatest } from 'rxjs';
 import { AppicationDataService } from 'app/service/application-data.service';
 import { Group } from 'app/model/group.model';
 import { Course } from 'app/model/course.model';
@@ -28,18 +29,24 @@ export class AttendancePanel implements OnInit, OnDestroy {
   selectedStudentId = signal<string | null>(null);
 
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
   private eportalService = inject(AppicationDataService);
   private backNav = inject(BackNavigationService);
 
-  ngOnInit() {
-    this.route.queryParamMap.subscribe(q => {
-      this.selectedStudentId.set(q.get('selected'));
-    });
+  private normalizeSelectedStudentId(value: string | null): string | null {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return null;
+    }
 
-    // Observe route params: classDateId (uniquely identifies a specific session with all students)
-    this.route.params.subscribe(p => {
-      const classDateId = p['classDateId'];
+    return /^\d+$/.test(normalized) ? normalized : null;
+  }
+
+  ngOnInit() {
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).subscribe(([paramMap, queryParamMap]) => {
+      const classDateId = paramMap.get('classDateId');
+      const selectedFromQuery = queryParamMap.get('selected');
+      const normalizedSelected = this.normalizeSelectedStudentId(selectedFromQuery);
+      this.selectedStudentId.set(normalizedSelected);
 
       if (classDateId) {
         // Find group containing this classDateId
@@ -79,15 +86,7 @@ export class AttendancePanel implements OnInit, OnDestroy {
   }
 
   onSelectedStudentHandled(): void {
-    if (!this.selectedStudentId()) {
-      return;
-    }
-
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { selected: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true
-    });
+    // Keep selected student in URL. Clearing it immediately can trigger a route update
+    // that resets the list scroll position to the first student.
   }
 }

@@ -45,7 +45,34 @@ export class StudentListComponent {
   selectedStudentHandled = output<void>();
   // Signals (Angular 21)
   students = signal<Student[]>([]);
-  private lastAutoScrolledSelectedId = signal<string | null>(null);
+  private initialPositionApplied = signal(false);
+  private pendingPostStatusReposition = signal(false);
+
+  private getInitialTargetStudentId(studentList: Student[]): string | null {
+    return this.selectedStudentId() || studentList[0]?.id || null;
+  }
+
+  private applyInitialPosition(studentList: Student[]): void {
+    const firstStudentId = studentList[0]?.id || null;
+    const targetStudentId = this.getInitialTargetStudentId(studentList);
+
+    if (!targetStudentId) {
+      return;
+    }
+
+    const index = studentList.findIndex(s => s.id === targetStudentId);
+
+    if (index >= 0) {
+      this.scrollToStudent(index);
+      this.initialPositionApplied.set(true);
+      this.selectedStudentHandled.emit();
+      return;
+    }
+
+    this.scrollToStudent(0);
+    this.initialPositionApplied.set(true);
+    this.selectedStudentHandled.emit();
+  }
 
   private applyAttendanceStatuses(classDateId: string): void {
     const currentStudents = this.students();
@@ -60,12 +87,19 @@ export class StudentListComponent {
         status: statusByStudentId.has(student.id) ? statusByStudentId.get(student.id)! : null
       }));
       this.students.set(mappedStudents);
+
+      if (this.pendingPostStatusReposition()) {
+        this.pendingPostStatusReposition.set(false);
+        this.applyInitialPosition(mappedStudents);
+      }
     });
   }
 
   private loadStudents(groupId: string, classDateId?: string): void {
     this.eportalService.getStudents(groupId).subscribe(list => {
       this.students.set(list || []);
+      this.initialPositionApplied.set(false);
+      this.pendingPostStatusReposition.set(!!classDateId);
 
       if (classDateId) {
         this.applyAttendanceStatuses(classDateId);
@@ -83,43 +117,23 @@ export class StudentListComponent {
         this.loadStudents(gid, classDateId || undefined);
       } else {
         this.students.set([]);
-      }
-    });
-
-    // Refresh statusów po powrocie z panelu studenta (selected query param)
-    effect(() => {
-      const selectedId = this.selectedStudentId();
-      const classDateId = this.classDateId();
-
-      if (selectedId && classDateId) {
-        this.applyAttendanceStatuses(classDateId);
+        this.initialPositionApplied.set(false);
       }
     });
 
     // Auto-scroll when both students are loaded AND selectedId is set
     effect(() => {
-      const selectedId = this.selectedStudentId();
       const studentList = this.students();
-
-      if (!selectedId) {
-        this.lastAutoScrolledSelectedId.set(null);
-        return;
-      }
 
       if (studentList.length === 0) {
         return;
       }
 
-      if (this.lastAutoScrolledSelectedId() === selectedId) {
+      if (this.initialPositionApplied()) {
         return;
       }
 
-      const index = studentList.findIndex(s => s.id === selectedId);
-      if (index >= 0) {
-        this.scrollToStudent(index);
-        this.lastAutoScrolledSelectedId.set(selectedId);
-        this.selectedStudentHandled.emit();
-      }
+      this.applyInitialPosition(studentList);
     });
   }
 

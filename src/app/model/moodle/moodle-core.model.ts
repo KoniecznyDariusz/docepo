@@ -47,12 +47,20 @@ export interface MoodleEnrolledUserGroupResponse {
   name?: string;
 }
 
+export interface MoodleEnrolledUserRoleResponse {
+  id?: number | string;
+  roleid?: number | string;
+  name?: string;
+  shortname?: string;
+}
+
 export interface MoodleEnrolledUserResponse {
   id?: number | string;
   firstname?: string;
   lastname?: string;
   fullname?: string;
   groups?: MoodleEnrolledUserGroupResponse[];
+  roles?: MoodleEnrolledUserRoleResponse[];
   exception?: string;
   message?: string;
 }

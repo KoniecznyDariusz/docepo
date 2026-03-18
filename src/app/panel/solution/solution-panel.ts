@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { combineLatest } from 'rxjs';
 import { Capacitor } from '@capacitor/core';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { AppicationDataService } from 'app/service/application-data.service';
@@ -74,12 +75,12 @@ export class SolutionPanel implements OnInit {
   }
 
   ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      const studentId = params['studentId'];
-      const taskId = params['taskId'];
-      const courseId = this.route.snapshot.queryParams['courseId'];
-      const groupId = this.route.snapshot.queryParams['groupId'] || 'g3';
-      const classDateId = this.route.snapshot.queryParams['classDateId'];
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).subscribe(([paramMap, queryParamMap]) => {
+      const studentId = paramMap.get('studentId') || undefined;
+      const taskId = paramMap.get('taskId') || undefined;
+      const courseId = queryParamMap.get('courseId') || undefined;
+      const groupId = queryParamMap.get('groupId') || 'g3';
+      const classDateId = queryParamMap.get('classDateId') || undefined;
 
       if (studentId && taskId) {
         // Pobierz rozwiązanie
