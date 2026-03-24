@@ -13,6 +13,10 @@ export class AttendanceSettings {
     return status === 'L';
   }
 
+  static isExcused(status: AttendanceStatus | undefined): boolean {
+    return status === 'E';
+  }
+
   static isMissing(status: AttendanceStatus | undefined): boolean {
     return status == null;
   }
@@ -21,7 +25,8 @@ export class AttendanceSettings {
     const labels: Record<Exclude<AttendanceStatus, null>, string> = {
       P: 'Obecny',
       A: 'Nieobecny',
-      L: 'Spóźniony'
+      L: 'Spóźniony',
+      E: 'Usprawiedliwiony'
     };
 
     return status ? labels[status] || status : 'Brak danych';

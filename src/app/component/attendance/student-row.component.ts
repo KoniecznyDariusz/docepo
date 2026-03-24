@@ -19,13 +19,23 @@ import { AttendanceStatus } from "app/model/AttendanceStatus.model";
       </div>
 
       <div class="flex gap-2">
-        @for (type of attendanceTypes; track type) {
-          <app-attendance-button 
-            [label]="type"
-            [active]="student().status === type"
-            (onClick)="handleAttendanceClick($event)">
-          </app-attendance-button>
-        }
+        <app-attendance-button 
+          [label]="'P'"
+          [active]="student().status === 'P'"
+          (onClick)="handleAttendanceClick('P')">
+        </app-attendance-button>
+
+        <app-attendance-button 
+          [label]="'L'"
+          [active]="student().status === 'L'"
+          (onClick)="handleAttendanceClick('L')">
+        </app-attendance-button>
+
+        <app-attendance-button 
+          [label]="getAbsenceCycleLabel()"
+          [active]="isAbsenceCycleActive()"
+          (onClick)="handleAbsenceCycleClick()">
+        </app-attendance-button>
       </div>
     </div>
   `
@@ -36,14 +46,28 @@ export class StudentRowComponent {
   onStatusChange = output<{studentId: string, status: Exclude<AttendanceStatus, null>}>();
   onProfileClick = output<string>();
 
-  readonly attendanceTypes: AttendanceStatus[] = ['P', 'A', 'L'];
-
-  handleAttendanceClick(status: AttendanceStatus) {
+  handleAttendanceClick(status: Exclude<AttendanceStatus, null>) {
     const currentStatus = this.student().status;
     if (currentStatus === status) {
       return;
     }
 
-    this.onStatusChange.emit({studentId: this.student().id, status: status as Exclude<AttendanceStatus, null>});
+    this.onStatusChange.emit({studentId: this.student().id, status});
+  }
+
+  getAbsenceCycleLabel(): Exclude<AttendanceStatus, null> {
+    return this.student().status === 'E' ? 'E' : 'A';
+  }
+
+  isAbsenceCycleActive(): boolean {
+    const status = this.student().status;
+    return status === 'A' || status === 'E';
+  }
+
+  handleAbsenceCycleClick(): void {
+    const currentStatus = this.student().status;
+    const nextStatus: Exclude<AttendanceStatus, null> = currentStatus === 'A' ? 'E' : 'A';
+
+    this.onStatusChange.emit({ studentId: this.student().id, status: nextStatus });
   }
 }

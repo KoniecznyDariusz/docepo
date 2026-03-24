@@ -2,6 +2,8 @@ import { Component, input, output } from "@angular/core";
 import { AttendanceStatus } from "app/model/AttendanceStatus.model";  
 // attendance-button.component.ts
 
+type AttendanceButtonLabel = Exclude<AttendanceStatus, null>;
+
 
 @Component({
   selector: 'app-attendance-button',
@@ -19,16 +21,17 @@ import { AttendanceStatus } from "app/model/AttendanceStatus.model";
   `
 })
 export class AttendanceButtonComponent {
-  label = input.required<AttendanceStatus>();
+  label = input.required<AttendanceButtonLabel>();
   active = input(false);
-  onClick = output<AttendanceStatus>();
+  onClick = output<AttendanceButtonLabel>();
 
   getColors() {
     // Logika kolorów Tailwinda przypisana do typu
     const colors = {
       'P': 'bg-green-600 border-green-400 text-white',
       'A': 'bg-red-600 border-red-400 text-white',
-      'L': 'bg-amber-600 border-amber-400 text-white'
+      'L': 'bg-amber-600 border-amber-400 text-white',
+      'E': 'bg-cyan-700 border-cyan-500 text-white'
     };
     return this.active() ? colors[this.label()!] : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50';
   }

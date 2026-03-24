@@ -10,6 +10,7 @@ describe('AttendanceSettings', () => {
   it('should detect absent status', () => {
     expect(AttendanceSettings.isAbsent('A')).toBe(true);
     expect(AttendanceSettings.isAbsent('L')).toBe(false);
+    expect(AttendanceSettings.isAbsent('E')).toBe(false);
     expect(AttendanceSettings.isAbsent(null)).toBe(false);
   });
 
@@ -17,6 +18,12 @@ describe('AttendanceSettings', () => {
     expect(AttendanceSettings.isLate('L')).toBe(true);
     expect(AttendanceSettings.isLate('P')).toBe(false);
     expect(AttendanceSettings.isLate(null)).toBe(false);
+  });
+
+  it('should detect excused status', () => {
+    expect(AttendanceSettings.isExcused('E')).toBe(true);
+    expect(AttendanceSettings.isExcused('A')).toBe(false);
+    expect(AttendanceSettings.isExcused(null)).toBe(false);
   });
 
   it('should detect missing status', () => {
@@ -29,6 +36,7 @@ describe('AttendanceSettings', () => {
     expect(AttendanceSettings.getStatusLabel('P')).toBe('Obecny');
     expect(AttendanceSettings.getStatusLabel('A')).toBe('Nieobecny');
     expect(AttendanceSettings.getStatusLabel('L')).toBe('Spóźniony');
+    expect(AttendanceSettings.getStatusLabel('E')).toBe('Usprawiedliwiony');
   });
 
   it('should return fallback label for null status', () => {

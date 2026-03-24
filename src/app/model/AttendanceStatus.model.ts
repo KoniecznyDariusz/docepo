@@ -1,1 +1,1 @@
-export type AttendanceStatus = 'P' | 'A' | 'L' | null;
+export type AttendanceStatus = 'P' | 'A' | 'L' | 'E' | null;

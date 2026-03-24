@@ -29,7 +29,7 @@ export class MoodleService {
 
   private toAttendanceStatus(value: string | null | undefined): AttendanceStatus {
     const normalized = String(value || '').trim().toUpperCase();
-    if (normalized === 'P' || normalized === 'A' || normalized === 'L') {
+    if (normalized === 'P' || normalized === 'A' || normalized === 'L' || normalized === 'E') {
       return normalized;
     }
     return null;
