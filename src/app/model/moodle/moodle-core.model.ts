@@ -83,6 +83,16 @@ export interface MoodleCourseContentModule {
     timestamp?: number | string;
     dataid?: string;
   }>;
+  contents?: Array<{
+    type?: string;
+    filename?: string;
+    filepath?: string;
+    filesize?: number | string;
+    fileurl?: string;
+    mimetype?: string;
+    timecreated?: number | string;
+    timemodified?: number | string;
+  }>;
 }
 
 export interface MoodleCourseContentSection {

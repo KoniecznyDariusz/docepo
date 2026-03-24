@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, from, throwError } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { MoodleAssignSaveGradeParams, MoodleAttendanceUpdateUserStatusParams, MoodleRestParams } from 'app/model/moodle/moodle-params.model';
 import {
   MoodleAssignAssignmentsResponse,
@@ -15,12 +15,24 @@ import {
   MoodleSiteInfoResponse
 } from 'app/model/moodle/moodle-api.model';
 import { AttendanceStatus } from 'app/model/AttendanceStatus.model';
+import { AuthMoodleService } from './auth-moodle.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MoodleService {
   private http = inject(HttpClient);
+  private authService = inject(AuthMoodleService);
+
+  private appendQueryParam(url: string, key: string, value: string): string {
+    const normalizedUrl = String(url || '').trim();
+    if (!normalizedUrl || !value) {
+      return normalizedUrl;
+    }
+
+    const separator = normalizedUrl.includes('?') ? '&' : '?';
+    return `${normalizedUrl}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+  }
 
   private toRawSessionId(classDateId: string): string {
     const [rawSessionId] = String(classDateId || '').split('-');
@@ -112,6 +124,48 @@ export class MoodleService {
       courseid: String(courseId),
       moodlewsrestformat: 'json'
     });
+  }
+
+  getTextFileFromMoodle(moodleUrl: string, fileUrl: string): Observable<string> {
+    const normalizedUrl = String(fileUrl || '').trim();
+    if (!normalizedUrl) {
+      return throwError(() => new Error('Brak adresu pliku do pobrania.'));
+    }
+
+    return from(Promise.all([
+      this.authService.getAccessToken(),
+      this.authService.getWebServiceToken()
+    ])).pipe(
+      switchMap(([accessToken, wsToken]) => {
+        const candidates: string[] = [];
+
+        // In OAuth mode the interceptor adds Authorization header automatically.
+        if (accessToken) {
+          candidates.push(normalizedUrl);
+        }
+
+        if (wsToken) {
+          candidates.push(this.appendQueryParam(normalizedUrl, 'token', wsToken));
+          candidates.push(this.appendQueryParam(normalizedUrl, 'wstoken', wsToken));
+        }
+
+        if (candidates.length === 0) {
+          candidates.push(normalizedUrl);
+        }
+
+        const tryCandidate = (index: number): Observable<string> => {
+          if (index >= candidates.length) {
+            return throwError(() => new Error('Nie udało się pobrać treści pliku z Moodle.'));
+          }
+
+          return this.http.get(candidates[index], { responseType: 'text' }).pipe(
+            catchError(() => tryCandidate(index + 1))
+          );
+        };
+
+        return tryCandidate(0);
+      })
+    );
   }
 
   coreCourseGetCourseModule<T>(moodleUrl: string, cmid: string): Observable<T> {

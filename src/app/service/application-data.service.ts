@@ -9,6 +9,7 @@ import { Group } from 'app/model/group.model';
 import { ClassDate } from 'app/model/classDate.model';
 import { Task } from 'app/model/task.model';
 import { Solution, SolutionStatus } from 'app/model/solution.model';
+import { DocepoCourseConfiguration } from 'app/model/docepo-configuration.model';
 import {
   MoodleAssignAssignmentsResponse,
   MoodleAssignAssignment,
@@ -39,6 +40,10 @@ export class ApplicationDataService {
   private moodleApi = inject(MoodleService);
   private activeAttendanceGroupId: string | null = null;
   private readonly taskPrefixPattern = /^L\d{1,2}\b/i;
+  private readonly docepoConfigFileName = 'docepo-configuration.json';
+  private readonly docepoConfigSectionName = 'docepo';
+  private readonly loggedDocepoConfigCourses = new Set<string>();
+  private readonly docepoConfigurationByCourseId = new Map<string, DocepoCourseConfiguration>();
 
   setActiveAttendanceGroupId(groupId: string | null | undefined): void {
     const normalizedGroupId = String(groupId || '').trim();
@@ -47,6 +52,19 @@ export class ApplicationDataService {
 
   getActiveAttendanceGroupId(): string | null {
     return this.activeAttendanceGroupId;
+  }
+
+  getDocepoConfigurationForCourse(courseId: string): DocepoCourseConfiguration | undefined {
+    const normalizedCourseId = String(courseId || '').trim();
+    if (!normalizedCourseId) {
+      return undefined;
+    }
+
+    return this.docepoConfigurationByCourseId.get(normalizedCourseId);
+  }
+
+  hasDocepoConfigurationForCourse(courseId: string): boolean {
+    return !!this.getDocepoConfigurationForCourse(courseId);
   }
 
   private isAccessControlErrorMessage(message: string): boolean {
@@ -224,6 +242,76 @@ export class ApplicationDataService {
         return of(undefined);
       })
     );
+  }
+
+  private normalizeCaseInsensitive(value: unknown): string {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  private parseDocepoConfiguration(content: string, courseId: string): DocepoCourseConfiguration {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(String(content || ''));
+    } catch {
+      throw new Error(`Nieprawidłowy JSON w ${this.docepoConfigFileName} dla courseId=${courseId}.`);
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`Nieprawidłowy format ${this.docepoConfigFileName} dla courseId=${courseId}. Oczekiwano obiektu JSON.`);
+    }
+
+    return parsed as DocepoCourseConfiguration;
+  }
+
+  private logDocepoConfigurationForCourse(moodleUrl: string, courseId: string): void {
+    const normalizedCourseId = String(courseId || '').trim();
+    if (!normalizedCourseId || this.loggedDocepoConfigCourses.has(normalizedCourseId)) {
+      return;
+    }
+
+    this.loggedDocepoConfigCourses.add(normalizedCourseId);
+
+    this.moodleApi.coreCourseGetContents<MoodleCourseContentSection[] | MoodleSiteInfoResponse>(moodleUrl, normalizedCourseId).pipe(
+      switchMap(response => {
+        if (!Array.isArray(response) && response?.exception) {
+          throw new Error(response.message || `Błąd pobierania zawartości kursu ${normalizedCourseId}.`);
+        }
+
+        const sections = Array.isArray(response) ? response : [];
+        const targetSection = sections.find(section =>
+          this.normalizeCaseInsensitive(section.name) === this.docepoConfigSectionName
+        );
+
+        if (!targetSection) {
+          throw new Error(`Nie znaleziono sekcji '${this.docepoConfigSectionName}' w kursie ${normalizedCourseId}.`);
+        }
+
+        const targetFile = (targetSection.modules || [])
+          .flatMap(module => module.contents || [])
+          .find(content =>
+            this.normalizeCaseInsensitive(content.filename) === this.docepoConfigFileName
+          );
+
+        const fileUrl = String(targetFile?.fileurl || '').trim();
+        if (!fileUrl) {
+          throw new Error(`Nie znaleziono pliku '${this.docepoConfigFileName}' w sekcji '${this.docepoConfigSectionName}'.`);
+        }
+
+        return this.moodleApi.getTextFileFromMoodle(moodleUrl, fileUrl);
+      })
+    ).subscribe({
+      next: content => {
+        const parsedConfig = this.parseDocepoConfiguration(content, normalizedCourseId);
+        this.docepoConfigurationByCourseId.set(normalizedCourseId, parsedConfig);
+
+        console.info(
+          `[Moodle API][Docepo Config] courseId=${normalizedCourseId}, file=${this.docepoConfigFileName}\n${JSON.stringify(parsedConfig, null, 2)}`
+        );
+      },
+      error: error => {
+        console.warn(`[Moodle API][Docepo Config] Nie udało się odczytać pliku konfiguracyjnego dla courseId=${normalizedCourseId}.`, error);
+      }
+    });
   }
 
   private warmupAttendanceInstanceMap(courses: Course[]): void {
@@ -1849,6 +1937,7 @@ export class ApplicationDataService {
             return this.enrichGroupsWithClassDates(normalizedMoodleUrl, courseId, groupsFromApi).pipe(
               map(groupsWithClassDates => {
                 console.info(`[Moodle API] Pobrano grupy dla kursu ${courseId}: ${groupsWithClassDates.length}`);
+                this.logDocepoConfigurationForCourse(normalizedMoodleUrl, courseId);
                 return groupsWithClassDates;
               })
             );
