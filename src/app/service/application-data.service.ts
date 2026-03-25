@@ -263,16 +263,11 @@ export class ApplicationDataService {
     return parsed as DocepoCourseConfiguration;
   }
 
-  private logDocepoConfigurationForCourse(moodleUrl: string, courseId: string): void {
+  private resolveDocepoConfigurationFileUrl(moodleUrl: string, courseId: string): Observable<string> {
     const normalizedCourseId = String(courseId || '').trim();
-    if (!normalizedCourseId || this.loggedDocepoConfigCourses.has(normalizedCourseId)) {
-      return;
-    }
 
-    this.loggedDocepoConfigCourses.add(normalizedCourseId);
-
-    this.moodleApi.coreCourseGetContents<MoodleCourseContentSection[] | MoodleSiteInfoResponse>(moodleUrl, normalizedCourseId).pipe(
-      switchMap(response => {
+    return this.moodleApi.coreCourseGetContents<MoodleCourseContentSection[] | MoodleSiteInfoResponse>(moodleUrl, normalizedCourseId).pipe(
+      map(response => {
         if (!Array.isArray(response) && response?.exception) {
           throw new Error(response.message || `Błąd pobierania zawartości kursu ${normalizedCourseId}.`);
         }
@@ -297,8 +292,21 @@ export class ApplicationDataService {
           throw new Error(`Nie znaleziono pliku '${this.docepoConfigFileName}' w sekcji '${this.docepoConfigSectionName}'.`);
         }
 
-        return this.moodleApi.getTextFileFromMoodle(moodleUrl, fileUrl);
+        return fileUrl;
       })
+    );
+  }
+
+  private logDocepoConfigurationForCourse(moodleUrl: string, courseId: string): void {
+    const normalizedCourseId = String(courseId || '').trim();
+    if (!normalizedCourseId || this.loggedDocepoConfigCourses.has(normalizedCourseId)) {
+      return;
+    }
+
+    this.loggedDocepoConfigCourses.add(normalizedCourseId);
+
+    this.resolveDocepoConfigurationFileUrl(moodleUrl, normalizedCourseId).pipe(
+      switchMap(fileUrl => this.moodleApi.getTextFileFromMoodle(moodleUrl, fileUrl))
     ).subscribe({
       next: content => {
         const parsedConfig = this.parseDocepoConfiguration(content, normalizedCourseId);
