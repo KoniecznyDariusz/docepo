@@ -60,7 +60,9 @@ export class StudentTasklistsComponent {
   }
 
   openSolutionDetail(solution: Solution): void {
-    this.router.navigate(['/solution', this.studentId(), solution.taskId], {
+    const solutionPanelSegment = this.moodle.getSolutionPanelRouteSegmentForCourse(this.courseId());
+
+    this.router.navigate(['/', solutionPanelSegment, this.studentId(), solution.taskId], {
       queryParams: {
         courseId: this.courseId(),
         groupId: this.groupId(),

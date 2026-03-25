@@ -111,9 +111,10 @@ export class SolutionPanel implements OnInit {
         });
 
         // Ustaw back URL
+        const studentPanelSegment = this.moodle.getStudentPanelRouteSegmentForCourse(courseId);
         const backUrl = classDateId
-          ? `/student/${studentId}/${groupId}?classDateId=${classDateId}`
-          : `/student/${studentId}/${groupId}`;
+          ? `/${studentPanelSegment}/${studentId}/${groupId}?classDateId=${classDateId}`
+          : `/${studentPanelSegment}/${studentId}/${groupId}`;
         this.backNav.setBackUrl(backUrl);
       }
     });

@@ -42,6 +42,7 @@ export class ApplicationDataService {
   private readonly taskPrefixPattern = /^L\d{1,2}\b/i;
   private readonly docepoConfigFileName = 'docepo-configuration.json';
   private readonly docepoConfigSectionName = 'docepo';
+  private readonly defaultTypeOfClasses = 'lab100Download';
   private readonly loggedDocepoConfigCourses = new Set<string>();
   private readonly docepoConfigurationByCourseId = new Map<string, DocepoCourseConfiguration>();
 
@@ -65,6 +66,28 @@ export class ApplicationDataService {
 
   hasDocepoConfigurationForCourse(courseId: string): boolean {
     return !!this.getDocepoConfigurationForCourse(courseId);
+  }
+
+  getTypeOfClassesForCourse(courseId: string | undefined | null): string {
+    const normalizedCourseId = String(courseId || '').trim();
+    if (!normalizedCourseId) {
+      return this.defaultTypeOfClasses;
+    }
+
+    const config = this.getDocepoConfigurationForCourse(normalizedCourseId);
+    const rawType = String(config?.['typeOfClasses'] || '').trim();
+
+    return rawType || this.defaultTypeOfClasses;
+  }
+
+  getStudentPanelRouteSegmentForCourse(courseId: string | undefined | null): string {
+    const typeOfClasses = this.getTypeOfClassesForCourse(courseId);
+    return `student-${typeOfClasses}-panel`;
+  }
+
+  getSolutionPanelRouteSegmentForCourse(courseId: string | undefined | null): string {
+    const typeOfClasses = this.getTypeOfClassesForCourse(courseId);
+    return `solution-${typeOfClasses}-panel`;
   }
 
   private isAccessControlErrorMessage(message: string): boolean {

@@ -13,6 +13,8 @@ export const routes: Routes = [
     { path: 'course', component: CoursePanel, canActivate: [moodleSelectionGuard]},
     { path: 'groups/:courseId', component: GroupPanel, canActivate: [moodleSelectionGuard], data: { backTo: '/course' } },
     { path: 'attendance/:classDateId', component: AttendancePanel, canActivate: [moodleSelectionGuard] },
-    { path: 'student/:studentId/:groupId', component: StudentPanel, canActivate: [moodleSelectionGuard] },
-    { path: 'solution/:studentId/:taskId', component: SolutionPanel, canActivate: [moodleSelectionGuard] }
+    { path: 'student-lab100Download-panel/:studentId/:groupId', component: StudentPanel, canActivate: [moodleSelectionGuard] },
+    { path: 'solution-lab100Download-panel/:studentId/:taskId', component: SolutionPanel, canActivate: [moodleSelectionGuard] },
+    { path: 'student/:studentId/:groupId', redirectTo: 'student-lab100Download-panel/:studentId/:groupId', pathMatch: 'full' },
+    { path: 'solution/:studentId/:taskId', redirectTo: 'solution-lab100Download-panel/:studentId/:taskId', pathMatch: 'full' }
 ];

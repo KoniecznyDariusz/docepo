@@ -172,10 +172,15 @@ export class StudentListComponent {
     if (!groupId) {
       return;
     }
-    this.router.navigate(['/student', studentId, groupId], {
-      queryParams: {
-        classDateId: this.classDateId() || undefined
-      }
+
+    this.eportalService.getGroup(groupId).subscribe(group => {
+      const studentPanelSegment = this.eportalService.getStudentPanelRouteSegmentForCourse(group?.courseId);
+
+      this.router.navigate(['/', studentPanelSegment, studentId, groupId], {
+        queryParams: {
+          classDateId: this.classDateId() || undefined
+        }
+      });
     });
   }
 }
